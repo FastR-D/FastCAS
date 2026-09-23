@@ -1,0 +1,8 @@
+{$FASTCAS_DOMAIN} {
+	encode zstd gzip
+	header Strict-Transport-Security "max-age=31536000; includeSubDomains"
+	reverse_proxy fastcas:8900 {
+		header_up X-FastCAS-Client-IP {remote_host}
+		header_up X-FastCAS-Proxy-Secret {$FASTCAS_PROXY_SECRET}
+	}
+}

@@ -1,0 +1,59 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: fastcas
+      POSTGRES_USER: fastcas
+      POSTGRES_PASSWORD: ${FASTCAS_DB_PASSWORD:?set FASTCAS_DB_PASSWORD}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fastcas -d fastcas"]
+      interval: 2s
+      timeout: 2s
+      retries: 20
+    volumes:
+      - fastcas-postgres:/var/lib/postgresql/data
+    networks: [backend]
+    restart: unless-stopped
+
+  fastcas:
+    build: .
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      FASTCAS_ENV: production
+      FASTCAS_LISTEN: 0.0.0.0:8900
+      FASTCAS_ISSUER: ${FASTCAS_ISSUER:?set public HTTPS origin}
+      FASTCAS_DATABASE_URL: postgres://fastcas:${FASTCAS_DB_PASSWORD:?set FASTCAS_DB_PASSWORD}@postgres:5432/fastcas?sslmode=disable
+      FASTCAS_KEYS_DIR: /state/keys
+      FASTCAS_UI_DIR: /opt/fastcas/web
+      FASTCAS_PROXY_SECRET: ${FASTCAS_PROXY_SECRET:?set 32-byte random proxy secret}
+    volumes:
+      - fastcas-keys:/state
+    networks: [backend]
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2.10.2-alpine
+    depends_on: [fastcas]
+    environment:
+      FASTCAS_DOMAIN: ${FASTCAS_DOMAIN:?set public domain}
+      FASTCAS_PROXY_SECRET: ${FASTCAS_PROXY_SECRET:?set 32-byte random proxy secret}
+    ports:
+      - "${FASTCAS_HTTP_PORT:-80}:80"
+      - "${FASTCAS_HTTPS_PORT:-443}:443"
+    volumes:
+      - ./deployments/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    networks: [backend]
+    restart: unless-stopped
+
+networks:
+  backend:
+
+volumes:
+  fastcas-postgres:
+  fastcas-keys:
+  caddy-data:
+  caddy-config:

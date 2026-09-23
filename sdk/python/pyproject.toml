@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "fastcas-sdk"
+version = "0.1.0"
+description = "Optional FastCAS login and account linking for Python applications"
+requires-python = ">=3.10"
+dependencies = ["Authlib==1.8.0", "httpx==0.28.1"]
+
+[project.optional-dependencies]
+fastapi = ["fastapi>=0.115,<1"]
+
+[tool.setuptools.packages.find]
+where = ["src"]

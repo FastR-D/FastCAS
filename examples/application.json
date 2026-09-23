@@ -1,0 +1,11 @@
+{
+ "id": "fastwrite-local",
+ "name": "FastWrite local",
+ "redirect_uris": ["http://127.0.0.1:3003/api/auth/fastcas/callback"],
+ "post_logout_redirect_uris": ["http://127.0.0.1:3003/"],
+ "scopes": ["openid", "profile", "email", "offline_access"],
+ "resources": [],
+ "grant_types": ["authorization_code", "refresh_token"],
+ "public": false,
+ "development": true
+}

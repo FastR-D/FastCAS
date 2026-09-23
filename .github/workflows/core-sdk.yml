@@ -1,0 +1,80 @@
+name: FastCAS core and SDK
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  core-sdk:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: fastcas_test
+          POSTGRES_USER: fastcas_test
+          POSTGRES_PASSWORD: fastcas_test_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U fastcas_test -d fastcas_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      FASTCAS_TEST_DATABASE_URL: postgres://fastcas_test:fastcas_test_password@127.0.0.1:5432/fastcas_test?sslmode=disable
+      FASTCAS_SDK_CONTRACT: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: 1.26.8
+          cache: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.22.2
+          cache: npm
+          cache-dependency-path: |
+            sdk/typescript/package-lock.json
+            web/package-lock.json
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: 3.10
+      - name: Install and test TypeScript SDK
+        run: |
+          cd sdk/typescript
+          npm ci --ignore-scripts
+          npm test
+      - name: Build React console
+        run: |
+          cd web
+          npm ci --ignore-scripts
+          npm run build
+      - name: Install and test Python SDK
+        run: |
+          python -m venv .venv
+          .venv/bin/python -m pip install -e 'sdk/python[fastapi]'
+          .venv/bin/python -m unittest discover -s sdk/python/tests -p 'test_*.py' -v
+      - name: Test Go SDK and Gin adapter
+        run: |
+          cd sdk/go
+          go test -race ./...
+          go vet ./...
+      - name: Check OpenAPI and core contracts
+        run: |
+          python3 api/check.py
+          go test -json -race -count=1 ./... | python3 scripts/check_contract_results.py --core
+          go vet ./...
+      - name: Build and smoke-test local release artifacts
+        run: |
+          python3 -m pip install setuptools==82.0.1 wheel==0.47.0
+          make release
+          cd dist/release-v*
+          sha256sum -c SHA256SUMS
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fastcas-local-release
+          path: dist/release-v*/

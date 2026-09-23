@@ -1,0 +1,11 @@
+.local
+.venv
+bin
+web/node_modules
+web/dist
+sdk/typescript/node_modules
+sdk/typescript/dist
+sdk/python/.venv
+**/__pycache__
+**/*.pyc
+.git

@@ -1,0 +1,15 @@
+.env
+.env.*
+!.env.example
+.local/
+bin/
+node_modules/
+web/dist/
+coverage*
+*.test
+__pycache__/
+.venv/
+sdk/typescript/dist/
+sdk/python/build/
+/dist/
+*.egg-info/
