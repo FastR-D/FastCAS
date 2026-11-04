@@ -5,6 +5,11 @@ on:
     branches: ['**']
   pull_request:
   workflow_call:
+    inputs:
+      ref:
+        type: string
+        required: false
+        default: ""
   workflow_dispatch:
 
 permissions:
@@ -20,6 +25,8 @@ jobs:
         working-directory: sdk/go
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.ref }}
       - uses: actions/setup-go@v5
         with:
           go-version-file: sdk/go/go.mod
@@ -38,6 +45,8 @@ jobs:
         python: ['3.10', '3.13']
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.ref }}
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python }}
@@ -56,6 +65,8 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.ref }}
       - uses: pnpm/action-setup@v4
         with:
           version: 10.33.0

@@ -3,23 +3,33 @@ name: Publish SDKs
 on:
   push:
     tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Existing release tag (retry npm and Go only; PyPI already published)
+        required: true
+        default: v0.1.1
+        type: string
 
 permissions:
   contents: read
 
 concurrency:
-  group: sdk-publish-${{ github.ref }}
+  group: sdk-publish-${{ inputs.release_tag || github.ref_name }}
   cancel-in-progress: false
 
 env:
-  RELEASE_TAG: ${{ github.ref_name }}
+  RELEASE_TAG: ${{ inputs.release_tag || github.ref_name }}
   FASTCAS_PUBLISH_CONFIRM: '1'
 
 jobs:
   checks:
     uses: ./.github/workflows/sdk.yml
+    with:
+      ref: ${{ inputs.release_tag || github.ref }}
 
   pypi:
+    if: github.event_name == 'push'
     needs: checks
     runs-on: ubuntu-latest
     environment: pypi
@@ -28,6 +38,8 @@ jobs:
       id-token: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.release_tag || github.ref }}
       - uses: actions/setup-python@v5
         with:
           python-version: '3.10'
@@ -43,6 +55,8 @@ jobs:
       id-token: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.release_tag || github.ref }}
       - uses: pnpm/action-setup@v4
         with:
           version: 10.33.0
@@ -61,11 +75,14 @@ jobs:
           export PATH="$PNPM_HOME:$PATH"
           pnpm add --global npm@11
           echo "$PNPM_HOME" >> "$GITHUB_PATH"
+          echo "npm_config_npm_path=$PNPM_HOME/npm" >> "$GITHUB_ENV"
+          "$PNPM_HOME/npm" --version
       - run: make publish-npm
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
   gotag:
+    if: ${{ !cancelled() && needs.npm.result == 'success' && (needs.pypi.result == 'success' || needs.pypi.result == 'skipped') }}
     needs: [pypi, npm]
     runs-on: ubuntu-latest
     permissions:
@@ -73,6 +90,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: ${{ inputs.release_tag || github.ref }}
           fetch-depth: 0
       - run: make check-sdk-version
       - name: Push Go module tag at the release commit

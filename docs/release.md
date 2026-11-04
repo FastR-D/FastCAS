@@ -59,3 +59,7 @@ GOPROXY=https://proxy.golang.org go get github.com/FastR-D/FastCAS/sdk/go@v0.1.1
 `manifest.json` 记录版本、Go tag 与产物，`SHA256SUMS` 可用 `sha256sum -c SHA256SUMS` 校验。离线构建不上传 registry；Go 源码归档与远程模块 tag 是两个独立入口。核心 CI 在协议/SDK 测试后运行该入口并保存产物，同时运行 `make publish-dry-run` 检查正式发布构建路径。
 
 升级与回滚参考[容器恢复演练](compose-recovery.md)、[单主机 HTTPS 样例](production-compose.md)和[全项目门禁](verification.md)。真实部署前仍需在目标环境验收。
+
+## npm 发布恢复
+
+pnpm 10 调用 npm 时会优先搜索 Node 可执行文件所在目录，因此 CI 通过 `npm_config_npm_path` 显式指定 pnpm 安装的 npm 11，确保 OIDC 可用。若 PyPI 已成功而 npm 失败，修复工作流后可在 Actions → Publish SDKs → Run workflow 输入原发布 tag，仅重试 npm 并创建同一提交的 Go tag，不重复上传 PyPI，也不移动原发布 tag。该恢复入口仅用于 PyPI 已成功的版本。
