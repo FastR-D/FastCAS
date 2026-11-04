@@ -1,16 +1,33 @@
 [build-system]
-requires = ["setuptools>=68"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "fastcas-sdk"
-version = "0.1.0"
+version = "0.1.1"
 description = "Optional FastCAS login and account linking for Python applications"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{name = "FastR-D"}]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Typing :: Typed",
+]
 requires-python = ">=3.10"
-dependencies = ["Authlib==1.8.0", "httpx==0.28.1"]
+dependencies = ["Authlib>=1.8,<2", "httpx>=0.28,<1"]
 
 [project.optional-dependencies]
 fastapi = ["fastapi>=0.115,<1"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[project.urls]
+Homepage = "https://github.com/FastR-D/FastCAS"
+Repository = "https://github.com/FastR-D/FastCAS"
+Issues = "https://github.com/FastR-D/FastCAS/issues"
+
+[tool.setuptools.package-data]
+fastcas = ["py.typed"]

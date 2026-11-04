@@ -54,10 +54,10 @@ def main() -> None:
     with tempfile.TemporaryDirectory(prefix="fastcas-release-") as temporary:
         stage = Path(temporary)
         run("python3", "api/check.py")
-        run("npm", "run", "build", cwd=ts)
-        run("npm", "run", "build", cwd=ROOT / "web")
-        npm_result = json.loads(run("npm", "pack", "--pack-destination", str(stage), "--json", cwd=ts))
-        npm_package = stage / npm_result[0]["filename"]
+        run("pnpm", "run", "build", cwd=ts)
+        run("pnpm", "run", "build", cwd=ROOT / "web")
+        npm_result = json.loads(run("pnpm", "pack", "--pack-destination", str(stage), "--json", cwd=ts))
+        npm_package = stage / npm_result["filename"]
         run("python3", "-m", "pip", "wheel", "--no-deps", "--no-build-isolation", "--wheel-dir", str(stage), str(py),
             env={**os.environ, "SOURCE_DATE_EPOCH": "315532800"})
         wheels = list(stage.glob(f"fastcas_sdk-{version}-*.whl"))
@@ -79,7 +79,8 @@ def main() -> None:
         # Install archives in isolated directories, so source-tree imports cannot mask broken packages.
         smoke = stage / "smoke"
         smoke.mkdir()
-        run("npm", "install", "--ignore-scripts", "--no-audit", "--no-fund", "--prefix", str(smoke), str(npm_package), cwd=smoke)
+        (smoke / "package.json").write_text('{"private":true,"type":"module"}\n')
+        run("pnpm", "add", "--ignore-scripts", str(npm_package), cwd=smoke)
         run("node", "--input-type=module", "-e",
             "import {FastCAS} from '@fastrd/fastcas/server'; import {loginURL} from '@fastrd/fastcas/browser'; if(typeof FastCAS!=='function'||!loginURL().startsWith('/')) process.exit(1)", cwd=smoke)
         python_site = stage / "python-site"
@@ -93,7 +94,8 @@ def main() -> None:
 
         artifacts = [npm_package, wheel, binary, web_bundle, go_bundle, stage / f"fastcas-openapi-{version}.json"]
         manifest = {"version": version, "target": "linux-amd64", "artifacts": [path.name for path in artifacts],
-                    "notes": "Local build only; Go module still requires a repository tag and SDKs are not published."}
+                    "go_tag": f"sdk/go/v{version}",
+                    "notes": "Local bundle only; registry publishing is a separate make publish operation."}
         (stage / "manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n")
         artifacts.append(stage / "manifest.json")
         checksums = "".join(f"{hashlib.sha256(path.read_bytes()).hexdigest()}  {path.name}\n" for path in sorted(artifacts))

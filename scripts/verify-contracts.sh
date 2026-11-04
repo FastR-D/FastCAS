@@ -4,7 +4,7 @@ set -euo pipefail
 cas_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$cas_root"
 
-for command_name in go node bun npm python3 corepack; do
+for command_name in go node bun pnpm python3 corepack; do
   command -v "$command_name" >/dev/null || { echo "Missing required command: $command_name" >&2; exit 2; }
 done
 [[ -s .local/test-database-url || -n "${FASTCAS_TEST_DATABASE_URL:-}" ]] || { echo "Set FASTCAS_TEST_DATABASE_URL or .local/test-database-url" >&2; exit 2; }
@@ -17,8 +17,8 @@ for sibling in FastWrite FastTask FastRead FastResearch FastNews FastInsight Fas
 done
 
 python3 api/check.py
-(cd sdk/typescript && npm run build)
-(cd web && npm run build)
+(cd sdk/typescript && pnpm run build)
+(cd web && pnpm run build)
 (cd ../FastWrite && bun run --filter @fastwrite/web build)
 (cd ../FastResearch && npm run build)
 (cd ../FastTask/web && npm run build)

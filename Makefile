@@ -16,3 +16,17 @@ verify-project-regressions:
 verify-capacity:
 	@test -s .local/test-database-url || test -n "$$FASTCAS_TEST_DATABASE_URL" || { echo 'Set FASTCAS_TEST_DATABASE_URL or .local/test-database-url' >&2; exit 2; }
 	FASTCAS_LOAD_TEST=1 go test -race -count=1 -parallel 8 -run '^TestCapacity(LoginAndRefreshBurst|OutboxBacklog|OutboxRecovery)$$' -v ./internal/httpapi ./internal/core
+
+# SDK registry publishing; build and isolated installation precede each upload.
+.PHONY: check-sdk-version publish-dry-run publish-pypi publish-npm publish
+check-sdk-version:
+	python3 scripts/publish-sdk.py check
+publish-dry-run:
+	python3 scripts/publish-sdk.py dry-run
+publish-pypi:
+	python3 scripts/publish-sdk.py pypi
+publish-npm:
+	python3 scripts/publish-sdk.py npm
+publish:
+	$(MAKE) publish-pypi
+	$(MAKE) publish-npm

@@ -1,0 +1,73 @@
+name: SDK CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  go:
+    name: Go SDK
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: sdk/go
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: sdk/go/go.mod
+          cache-dependency-path: sdk/go/go.sum
+      - run: go mod download
+      - run: go test -race -count=1 ./...
+      - run: go vet ./...
+
+  python:
+    name: Python SDK (${{ matrix.python }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ['3.10', '3.13']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - uses: astral-sh/setup-uv@v6
+      - run: uv venv .venv
+      - run: uv pip install --python .venv/bin/python -e 'sdk/python[fastapi]'
+      - run: .venv/bin/python -m unittest discover -s sdk/python/tests -p 'test_*.py' -v
+      - name: Check release guards and wheel installation
+        run: |
+          python3 -m unittest discover -s scripts -p 'test_publish_sdk.py' -v
+          python3 scripts/publish-sdk.py pypi-dry-run
+
+  typescript:
+    name: TypeScript SDK
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.22.2
+          cache: pnpm
+          cache-dependency-path: sdk/typescript/pnpm-lock.yaml
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pnpm --dir sdk/typescript install --frozen-lockfile --ignore-scripts
+      - run: pnpm --dir sdk/typescript test
+      - name: Check release tarball installation
+        run: python3 scripts/publish-sdk.py npm-dry-run

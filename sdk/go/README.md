@@ -2,7 +2,7 @@
 
 可运行的服务身份调用见 [三语言示例](../../examples/service-tokens/README.md)。
 
-模块：`github.com/FastR-D/FastCAS/sdk/go`。本地开发通过主模块 replace 指向该目录，尚未发布远程 tag。
+模块：`github.com/FastR-D/FastCAS/sdk/go`。发布后安装：`go get github.com/FastR-D/FastCAS/sdk/go@v0.1.1`。本地开发仍可通过主模块 replace 指向该目录。发布流程见[发布文档](../../docs/release.md)。
 
 用 `New(Config, TransactionStore)` 创建客户端；应用提供原子 `Take` 的持久事务存储。`BeginLogin/FinishLogin` 完成 OIDC 验证；`BeginLink/PrepareLink/ActivateLink` 完成显式已有账号绑定。SDK 不创建用户、不改本地密码和业务权限。
 

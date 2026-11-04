@@ -1,0 +1,92 @@
+name: Publish SDKs
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sdk-publish-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  RELEASE_TAG: ${{ github.ref_name }}
+  FASTCAS_PUBLISH_CONFIRM: '1'
+
+jobs:
+  checks:
+    uses: ./.github/workflows/sdk.yml
+
+  pypi:
+    needs: checks
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - uses: astral-sh/setup-uv@v6
+      - run: make publish-pypi
+
+  npm:
+    needs: checks
+    runs-on: ubuntu-latest
+    environment: npm
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.22.2
+          cache: pnpm
+          cache-dependency-path: sdk/typescript/pnpm-lock.yaml
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Manage publishing CLI with pnpm
+        shell: bash
+        run: |
+          export PNPM_HOME="$RUNNER_TEMP/pnpm-global"
+          export PATH="$PNPM_HOME:$PATH"
+          pnpm add --global npm@11
+          echo "$PNPM_HOME" >> "$GITHUB_PATH"
+      - run: make publish-npm
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  gotag:
+    needs: [pypi, npm]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - run: make check-sdk-version
+      - name: Push Go module tag at the release commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="sdk/go/${RELEASE_TAG}"
+          commit="$(git rev-parse HEAD)"
+          if git show-ref --verify --quiet "refs/tags/$tag"; then
+            test "$(git rev-parse "refs/tags/$tag^{commit}")" = "$commit" || {
+              echo "Existing Go tag points at a different commit" >&2
+              exit 1
+            }
+          else
+            git tag "$tag" "$commit"
+            git push origin "refs/tags/$tag"
+          fi

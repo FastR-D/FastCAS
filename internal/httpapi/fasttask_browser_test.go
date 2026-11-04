@@ -36,7 +36,7 @@ func TestFastTaskAgainstRealBrowser(t *testing.T) {
 		t.Fatal(err)
 	}
 	if _, err := os.Stat(filepath.Join(root, "FastTask", "web", "dist", "index.html")); err != nil {
-		t.Fatal("build FastTask web before browser contract: npm run build")
+		t.Fatal("build FastTask web before browser contract: pnpm run build")
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
 	defer cancel()

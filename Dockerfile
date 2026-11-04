@@ -1,9 +1,9 @@
 FROM node:22.22.2-alpine AS web
 WORKDIR /src/web
-COPY web/package.json web/package-lock.json ./
-RUN npm ci --ignore-scripts --no-audit --no-fund
+COPY web/package.json web/pnpm-lock.yaml ./
+RUN corepack enable pnpm && pnpm install --frozen-lockfile --ignore-scripts
 COPY web/ ./
-RUN npm run build
+RUN pnpm run build
 
 FROM golang:1.26.8-alpine AS backend
 WORKDIR /src

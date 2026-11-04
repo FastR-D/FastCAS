@@ -11,8 +11,8 @@ Go 模块锁定 `go1.26.8`；首次 Go 命令自动下载工具链。需要 Post
 ```bash
 # FastCAS 目录下
 cd sdk/typescript
-npm ci --ignore-scripts
-npm test
+pnpm install --frozen-lockfile --ignore-scripts
+pnpm test
 cd ../..
 uv venv --python python3.10 .venv
 uv pip install --python .venv/bin/python -e sdk/python

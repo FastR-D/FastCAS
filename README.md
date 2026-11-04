@@ -32,3 +32,5 @@ FastCAS 是 FastR-D 工具生态的**可选统一身份服务**，后端使用 G
 | 发布边界 | 当前进行本地实现与隔离数据库验证；尚无远程仓库创建、包发布或生产部署 |
 
 规划中的版本与部署参数应结合开发记录阅读。生产数据、真实部署配置和生产运行效果尚未验证。
+
+SDK 安装与发布：[Go](sdk/go/README.md)、[Python](sdk/python/README.md)、[TypeScript](sdk/typescript/README.md)。维护者可先运行 `make publish-dry-run`；本地 token 与 CI OIDC 配置见[发布指南](docs/release.md)。

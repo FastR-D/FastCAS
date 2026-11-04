@@ -1,8 +1,10 @@
 # @fastrd/fastcas
 
+发布后安装：`pnpm add @fastrd/fastcas@0.1.1`。版本发布与认证配置见[发布文档](../../docs/release.md)。
+
 可运行的 Node 服务身份调用见 [三语言示例](../../examples/service-tokens/README.md)。
 
-开发中的 FastCAS TypeScript SDK。`npm run build` 生成 ESM 与类型声明；`./browser` 不包含服务端凭证代码，`./server` 面向 Node/Bun。
+开发中的 FastCAS TypeScript SDK。`pnpm run build` 生成 ESM 与类型声明；`./browser` 不包含服务端凭证代码，`./server` 面向 Node/Bun。
 
 应用必须提供持久化 `TransactionStore`，其中 `take(state)` 原子消费事务。为每次流程设置随机、HttpOnly、生产 Secure 的浏览器绑定 Cookie，并在回调传入相同绑定；账号认证前由应用重新验证本地账号，回调检查本地 account/session 未改变。
 

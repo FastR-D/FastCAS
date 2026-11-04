@@ -35,7 +35,7 @@ func TestFastResearchAgainstRealBrowser(t *testing.T) {
 	}
 	research := filepath.Join(root, "FastResearch")
 	if _, err := os.Stat(filepath.Join(research, "dist", "index.html")); err != nil {
-		t.Fatal("build FastResearch before browser contract: npm run build")
+		t.Fatal("build FastResearch before browser contract: pnpm run build")
 	}
 	directory := t.TempDir()
 	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)

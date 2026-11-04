@@ -32,12 +32,12 @@ export function Integration({api,busy,run}:{api:API;busy:boolean;run:(work:()=>P
    <section><h2>提供方信息</h2><p>Issuer 以 OIDC discovery 的实际响应为准。</p>
     {issuer?<p><code>{issuer}</code></p>:<p>{issuerError||'正在读取…'}</p>}
     <p><a href="/.well-known/openid-configuration" target="_blank" rel="noreferrer">查看 OIDC discovery</a></p>
-    <p>当前三语言 SDK 为 0.1.0 本地开发版本，尚未发布 npm、PyPI 或 Go tag。生产接入前应固定同一组已验收的版本并完成包发布。</p>
+    <p>当前三语言 SDK 目标版本为 0.1.1，发布状态请查看包仓库及 Go tag。生产接入前应固定同一组已验收的版本并完成包发布。</p>
    </section>
   </div>
   <section><h2>三语言 SDK</h2><p>以下命令用于当前本地工作区；部署环境应使用经过验证的正式包版本。</p>
    <div className="grid">
-    <div><h3>TypeScript · Node/Bun</h3><pre>cd FastCAS/sdk/typescript &amp;&amp; npm ci &amp;&amp; npm run build</pre><p>服务端入口为 <code>@fastrd/fastcas/server</code>，浏览器入口为 <code>@fastrd/fastcas/browser</code>。</p></div>
+    <div><h3>TypeScript · Node/Bun</h3><pre>cd FastCAS/sdk/typescript &amp;&amp; pnpm install --frozen-lockfile &amp;&amp; pnpm run build</pre><p>服务端入口为 <code>@fastrd/fastcas/server</code>，浏览器入口为 <code>@fastrd/fastcas/browser</code>。</p></div>
     <div><h3>Go · net/http/Gin</h3><pre>go mod edit -replace github.com/FastR-D/FastCAS/sdk/go=/absolute/path/FastCAS/sdk/go</pre><p>生产代码使用持久事务存储；Gin 通知适配器在 <code>sdk/go/ginadapter</code>。</p></div>
     <div><h3>Python · sync/async/FastAPI</h3><pre>python -m pip install -e ./FastCAS/sdk/python</pre><p>FastAPI 适配器为可选依赖；其他 Python 服务可以直接使用 SDK。</p></div>
    </div>

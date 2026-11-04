@@ -22,7 +22,7 @@ func TestConsoleAgainstRealBrowser(t *testing.T) {
 	root := filepath.Clean(filepath.Join(filepath.Dir(file), "../.."))
 	dist := filepath.Join(root, "web", "dist")
 	if _, err := os.Stat(filepath.Join(dist, "index.html")); err != nil {
-		t.Fatal("build web console before browser contract: npm ci && npm run build")
+		t.Fatal("build web console before browser contract: pnpm install --frozen-lockfile && pnpm run build")
 	}
 	store := testutil.Store(t)
 	server := httptest.NewUnstartedServer(nil)

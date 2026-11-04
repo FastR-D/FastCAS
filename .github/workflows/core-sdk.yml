@@ -30,29 +30,32 @@ jobs:
         with:
           go-version: 1.26.8
           cache: true
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.0
       - uses: actions/setup-node@v4
         with:
           node-version: 22.22.2
-          cache: npm
+          cache: pnpm
           cache-dependency-path: |
-            sdk/typescript/package-lock.json
-            web/package-lock.json
+            sdk/typescript/pnpm-lock.yaml
+            web/pnpm-lock.yaml
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.4.0
       - uses: actions/setup-python@v5
         with:
-          python-version: 3.10
+          python-version: '3.10'
       - name: Install and test TypeScript SDK
         run: |
           cd sdk/typescript
-          npm ci --ignore-scripts
-          npm test
+          pnpm install --frozen-lockfile --ignore-scripts
+          pnpm test
       - name: Build React console
         run: |
           cd web
-          npm ci --ignore-scripts
-          npm run build
+          pnpm install --frozen-lockfile --ignore-scripts
+          pnpm run build
       - name: Install and test Python SDK
         run: |
           python -m venv .venv
@@ -68,6 +71,11 @@ jobs:
           python3 api/check.py
           go test -json -race -count=1 ./... | python3 scripts/check_contract_results.py --core
           go vet ./...
+      - uses: astral-sh/setup-uv@v6
+      - name: Verify SDK publishing without uploading
+        run: |
+          python3 -m unittest discover -s scripts -p 'test_publish_sdk.py' -v
+          make publish-dry-run
       - name: Build and smoke-test local release artifacts
         run: |
           python3 -m pip install setuptools==82.0.1 wheel==0.47.0
