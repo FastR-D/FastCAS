@@ -37,7 +37,7 @@ function basicComponent(value: string): string { return new URLSearchParams({ va
 function equal(left: string, right: string): boolean { const a = Buffer.from(left); const b = Buffer.from(right); return a.length === b.length && timingSafeEqual(a, b); }
 function safeReturnTo(value?: string): string {
   if (!value) return "/";
-  if (!value.startsWith("/") || value.startsWith("//") || /[\\\r\n]/.test(value)) throw new FastCASError("invalid_return_to", "Use an application-relative return path");
+  if (!value.startsWith("/") || value.startsWith("//") || /[\\\x00-\x1f\x7f]/.test(value)) throw new FastCASError("invalid_return_to", "Use an application-relative return path");
   return value;
 }
 function checkURL(value: string, insecure: boolean): URL {

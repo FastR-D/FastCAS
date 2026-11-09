@@ -241,7 +241,9 @@ func (c *Client) begin(ctx context.Context, purpose string, options BeginOptions
 	if path == "" {
 		path = "/"
 	}
-	if !strings.HasPrefix(path, "/") || strings.HasPrefix(path, "//") || strings.ContainsAny(path, "\\\r\n") {
+	if !strings.HasPrefix(path, "/") || strings.HasPrefix(path, "//") || strings.ContainsFunc(path, func(character rune) bool {
+		return character == '\\' || character < 0x20 || character == 0x7f
+	}) {
 		return "", errors.New("application-relative return path required")
 	}
 	p, _, err := c.discovery(ctx)
