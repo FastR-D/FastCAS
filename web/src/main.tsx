@@ -1,4 +1,7 @@
 import React, {useEffect,useState} from 'react';
+import {Alert, Loading} from '@fastrd/ui-react';
+import {initColorMode} from '@fastrd/ui-foundation';
+import '@fastrd/ui-react/styles.css';
 import {createRoot} from 'react-dom/client';
 import './style.css';
 import {Admin} from './Admin';
@@ -6,6 +9,7 @@ import {Delegations} from './Delegations';
 import {Integration} from './Integration';
 import {Guest,takeInitialCredential} from './Guest';
 const initialCredential=takeInitialCredential();
+initColorMode({storageKey:'fastcas-theme'});
 type Me={user:{name:string;email:string;role:string};csrf:string;mfa_enabled:boolean;session:{id:string}};
 type Link={id:string;client_id:string;local_account_ref:string;state:string;version:number};
 type Installation={id:string;client_id:string;client_name:string;installation_id:string;created_at:string;revoked_at:string|null};
@@ -26,8 +30,8 @@ function App(){
  async function loadEvents(before=''){const data=await api<{events:Event[];next_cursor:string}>('/admin/outbox'+(before?'?before='+encodeURIComponent(before):''));setEvents(before?old=>[...old,...data.events]:data.events);setCursor(data.next_cursor)}
  return <div className="shell"><header><a className="brand" href="/console/">FastCAS<span>账号与安全</span></a>{me&&<button disabled={busy} onClick={()=>void run(async()=>{await api('/logout',{});setMe(undefined);setNotice('已退出 FastCAS')})}>退出</button>}</header>
  <main><div className="intro"><p className="eyebrow">FAST R&D · IDENTITY</p><h1>{me?`你好，${me.user.name}`:'你的科研账号安全中心'}</h1><p>管理关联身份与登录安全。各项目的本地账号、内容和权限由项目独立管理。</p></div>
- {error&&<p role="alert" className="error">{error}</p>}{notice&&<p role="status" className="notice">{notice}</p>}
- {loading?<p>正在读取账号…</p>:!me?<Guest initial={initialCredential}/>:<>
+  {error&&<Alert tone="danger">{error}</Alert>}{notice&&<Alert tone="success">{notice}</Alert>}
+  {loading?<Loading label="正在读取账号…"/>:!me?<Guest initial={initialCredential}/>:<>
  <nav aria-label="账号导航">{[['security','安全设置'],['links','关联项目'],['installations','本机安装'],['delegations','跨项目委托'],['sessions','登录会话'],...(me.user.role==='admin'?[['integration','开发者接入'],['identities','身份管理'],['applications','应用管理'],['services','服务身份'],['exchange-policies','调用策略'],['credentials','邀请与恢复'],['audit','审计'],['outbox','失败投递']]:[])].map(([key,label])=><button key={key} aria-current={page===key?'page':undefined} disabled={busy} onClick={()=>void select(key)}>{label}</button>)}</nav>
  {page==='security'&&<div className="grid"><section><h2>身份验证</h2><p>{me.user.email}</p><p>双重验证：{me.mfa_enabled?'已启用':'未启用'}</p><form onSubmit={e=>{e.preventDefault();void run(async()=>{await api('/me/reauthenticate',{password,code});setPassword('');setCode('');setNotice('身份已重新验证');await refresh()})}}><label>当前密码<input type="password" autoComplete="current-password" required value={password} onChange={e=>setPassword(e.target.value)}/></label><label>动态验证码或恢复码<input autoComplete="one-time-code" value={code} onChange={e=>setCode(e.target.value)}/></label><button className="primary" disabled={busy}>重新验证身份</button></form></section>
  <section><h2>双重验证</h2><p>使用认证器生成动态验证码。开启后请妥善保存一次性恢复码。</p>{me.mfa_enabled&&<><p>更新恢复码前，请先用上方表单重新验证密码和动态验证码；旧恢复码会立即失效。</p><button disabled={busy} onClick={()=>{if(window.confirm('生成新的恢复码并使所有旧恢复码失效？'))void run(async()=>{const result=await api<{recovery_codes:string[]}>('/me/mfa/recovery-codes',{});setRecovery(result.recovery_codes);setNotice('恢复码已更新，旧码已失效')})}}>更新恢复码</button></>}{!me.mfa_enabled&&!uri&&<button disabled={busy} onClick={()=>void run(async()=>setUri((await api<{otpauth_uri:string}>('/me/mfa/enroll',{})).otpauth_uri))}>设置认证器</button>}{uri&&<><p>将以下 URI 导入你的认证器。此密钥只应由你保存。</p><textarea aria-label="认证器配置" readOnly value={uri}/><button disabled={busy||!code} onClick={()=>void run(async()=>{const result=await api<{recovery_codes:string[]}>('/me/mfa/confirm',{code});setRecovery(result.recovery_codes);setUri('');setCode('');await refresh()})}>确认验证码并开启</button></>}{recovery.length>0&&<><p>请现在保存恢复码，离开页面后不再显示。</p><pre>{recovery.join('\n')}</pre><button onClick={()=>setRecovery([])}>已保存，隐藏恢复码</button></>}</section>
