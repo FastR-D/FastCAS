@@ -32,3 +32,5 @@
 按要求移除 Seven-project integration Action；七项目回归保留本地脚本入口。SDK CI 和发布 workflow 保留。共享 Go 验签测试位于主模块 `contracts` 包，和 TS/Python 读取同一个已跟踪 fixture；忽略的 `sdk/go/testdata/` 不影响干净检出。
 
 0.1.2 发布后再次验证：npm/PyPI 包与 Go 模块均从正式 registry 安装，七项目回归通过；去掉项目测试中的本地 SDK PYTHONPATH 覆盖后，修正 FastNews 浏览器脚本的项目模块搜索路径，随后重新执行全部真实提供方门禁，**28/28 通过**。记录为 `.local/v012-provider-gate.log`，内部回归在 `.local/v012-full-verification.log`。SDK 4 项远端 CI、发布流程以及 FastCAS core CI 全部成功。FastTask 全包单测与 vet 也通过；FastResearch Docker 镜像构建成功，断网加载 SDK 返回 0.1.2。
+
+FastTask Docker 使用 `--build-arg APK_MIRROR=mirrors.aliyun.com` 重试后构建通过（默认源曾超时），镜像可在断网环境执行 version；FastResearch 容器也已构建并验证正式 npm SDK 0.1.2。FastWrite 严格可选属性测试经修正后全部 workspace 类型检查与 14 个认证测试通过，七项目本地脚本现先执行 server typecheck。FastNews 手动 CD 的 secret 条件语法也已修正，未触发部署。

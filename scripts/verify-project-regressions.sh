@@ -7,7 +7,7 @@ workspace="$(dirname "$cas_root")"
 # Keep the projects' own local-account and FastCAS regressions beside the
 # provider contracts. These checks catch breakage that a successful callback
 # or signed-event roundtrip alone cannot see.
-(cd "$workspace/FastWrite" && bun test apps/server/src/auth/identity-provider.test.ts apps/server/src/auth/fastcas-service.test.ts)
+(cd "$workspace/FastWrite" && bun run --filter @fastwrite/server typecheck && bun test apps/server/src/auth/identity-provider.test.ts apps/server/src/auth/fastcas-service.test.ts)
 (cd "$workspace/FastTask" && go test -race ./internal/httpapi ./internal/platform/auth ./internal/persistence)
 (cd "$workspace/FastRead" && PYTHONPATH=backend .venv/bin/python -m pytest --noconftest -q \
   backend/tests/test_local_accounts.py backend/tests/test_fastcas_store.py backend/tests/test_fastcas_service.py)

@@ -8,15 +8,15 @@
 
 七项目接入提交：
 
-- FastWrite：[`7a39b19`](https://github.com/FastR-D/FastWrite/commit/7a39b190025986b9b7de28f5475b2ff5b146be4f)。
+- FastWrite：[`82101ae`](https://github.com/FastR-D/FastWrite/commit/82101ae50cfe7c594d8cd49acafae74e7abc2c12)。
 - FastTask：[`c240c9c`](https://github.com/FastR-D/FastTask/commit/c240c9cd84cbe897a146b33185f49ba46b11fe05)。
 - FastRead：[`7ab7510`](https://github.com/FastR-D/FastRead/commit/7ab7510e89773e868b78d4b46db29b0294b9c1d7)。
 - FastResearch：[`982a89d`](https://github.com/FastR-D/FastResearch/commit/982a89dd4326f8fe4a2374949e90634332c750b0)。
-- FastNews：[`3443572`](https://github.com/FastR-D/FastNews/commit/344357259886e21e8c3ff1eb001c014c86f52020)。
+- FastNews：[`f54b709`](https://github.com/FastR-D/FastNews/commit/f54b7092fa6867a9d253d0cfa7be4bd3f029485b)。
 - FastInsight：[`3c51188`](https://github.com/FastR-D/FastInsight/commit/3c51188ca89d7a03e47ce51308030fb3fae23436)。
 - FastLabs：[`08bbb44`](https://github.com/FastR-D/FastLabs/commit/08bbb442582919151bc7dd92713392b19420c1f0)。
 
-使用发布后的包完成内部回归及 28/28 真实提供方/浏览器契约；项目 Python 回归不再通过 PYTHONPATH 强制覆盖为本地 SDK。FastTask 全量 `go test ./...` 与 vet 通过，FastResearch 容器已构建并在断网条件下确认加载 npm 0.1.2。生产域名、真实用户数据迁移和 SLO 验收仍单独进行。
+使用发布后的包完成内部回归及 28/28 真实提供方/浏览器契约；项目 Python 回归不再通过 PYTHONPATH 强制覆盖为本地 SDK。FastTask 全量 `go test ./...` 与 vet 通过，FastResearch 容器已构建并在断网条件下确认加载 npm 0.1.2；FastTask 容器用现有 APK 镜像参数重试后构建成功，断网执行 version 正常。生产域名、真实用户数据迁移和 SLO 验收仍单独进行。
 
 2026-11-11 全范围代码收尾：先更新所有同级 FastRD 仓库并核对 `origin/main`；FastRead 快进到 `962f3d0`、FastResearch 到 `8bf03b3`，补齐 FastLabs `72f8fa2` 与 FastNews `0529942`。FastTask 远端历史重写，原 main 保存在 `codex/preserved-main-20261111`，新 main 对齐 `8e91d76`；补回上游缺失的账号认证入口和契约测试。FastWrite 原有九个未提交文件经 SHA-256 复核保持原样。FastFigure 与其余项目均已对齐，各仓库提交/差异快照在本地 `.local/project-update-result.json`。
 
@@ -199,3 +199,5 @@ React 控制台首版：`web/` 接入 `/console/` 可选静态挂载，安全中
 管理员浏览器与应用密钥进展：真实 Chrome/Go/PostgreSQL 测试完成 TOTP 开通，证明启用前管理 API 拒绝、启用后可登记应用和签发邀请；创建后的密钥轮换在页面通过，并验证新密钥只在内存中展示。004 迁移支持上一把密钥有界交接期，默认 10 分钟、最多 1 小时；到期自动拒绝旧密钥，连续轮换覆盖更旧凭证。真实 PostgreSQL 测试覆盖权限、到期、公开客户端拒绝及审计失败回滚。服务端 race、go vet 和前端构建通过。服务身份和多实例凭证分发/部署演练仍待完成。
 
 2026-11-11 桌面控制台与审计增量：前端改用 npm 正式包 `@fastrd/ui-react@0.1.2` / `@fastrd/ui-foundation@0.1.2`，锁定依赖与完整性。分组侧栏、桌面布局、共享控件/反馈/主题替换原早期样式；登录、OIDC 同意、设备确认与完成页通过 Vite manifest 复用 npm 构建的样式，原生表单继续由 Go 校验。应用权限与通知地址改为 FastUI 对话框，失败保留输入并支持重试/取消。高风险确认统一使用原生模态对话框；安全页和各管理页卸载时清除一次性密钥与恢复码显示。新增审计操作/执行者/目标/时间组合筛选、保留条件分页和 015 检索索引，OpenAPI 同步更新。按本轮要求以桌面场景交付，未开展窄屏适配。验证命令与本轮证据见 [控制台说明](../web/README.md)；全部商业化及生产验收仍未完成。
+
+后续 CI 修正：FastWrite 新增测试改为省略可选字段，完整 workspace 类型检查与 14 个认证测试通过；本地门禁增加 server typecheck，避免 Bun 仅转译掩盖此类问题。FastNews 原 CD workflow 直接在 job if 引用 secrets 无法解析，已改为 job env 标志与步骤判断；仍只允许手动触发，未执行部署。
