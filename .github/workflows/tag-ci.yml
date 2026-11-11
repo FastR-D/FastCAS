@@ -1,0 +1,77 @@
+name: Validate and deploy FastCAS
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    concurrency:
+      group: validate-fastcas-${{ github.ref }}
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26.8'
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+      - run: go test ./...
+      - run: CGO_ENABLED=0 go build -trimpath -o bin/fastcas ./cmd/fastcas
+      - run: pnpm install --frozen-lockfile --ignore-scripts && pnpm run build
+        working-directory: web
+      - name: Checkout pinned FastDeploy packager
+        uses: actions/checkout@v4
+        with:
+          repository: FastR-D/FastDeploy
+          ref: cc223a0b83b0ef2389974dd70a4b74148cd1af87
+          path: .fastdeploy-tools
+          persist-credentials: false
+      - name: Package the tested runtime
+        run: python3 .fastdeploy-tools/scripts/package.py fastcas --output "$RUNNER_TEMP/fastcas-release"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ github.sha }}
+          path: ${{ runner.temp }}/fastcas-release/
+          if-no-files-found: error
+          retention-days: 7
+
+  deploy:
+    needs: validate
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    uses: FastR-D/FastDeploy/.github/workflows/deploy.yml@cc223a0b83b0ef2389974dd70a4b74148cd1af87
+    with:
+      app: fastcas
+      artifact-name: release-${{ github.sha }}
+      # These values are literal KEY=value entries; do not add shell quotes.
+      # Code-relative paths are supplied by the trusted FastDeploy server profile.
+      runtime-env: |
+        FASTCAS_ENV=production
+        FASTCAS_ISSUER=https://cas.fastrd.io
+        FASTCAS_KEYS_DIR=/home/dev/FastCAS/.local/keys
+        FASTCAS_LISTEN=127.0.0.1:8900
+    secrets:
+      SSH_HOST: ${{ secrets.FASTRD_SSH_HOST }}
+      SSH_PORT: ${{ secrets.FASTRD_SSH_PORT }}
+      SSH_USER: ${{ secrets.FASTRD_SSH_USER }}
+      SSH_PRIVATE_KEY: ${{ secrets.FASTRD_SSH_PRIVATE_KEY }}
+      SSH_KNOWN_HOSTS: ${{ secrets.FASTRD_SSH_KNOWN_HOSTS }}
+      runtime-secrets: |
+        {
+          "FASTCAS_DATABASE_URL": ${{ toJSON(secrets.FASTCAS_DATABASE_URL) }}
+        }

@@ -57,6 +57,8 @@ try{
   assert.equal(cas.role,local.role,'FastCAS login changed project role');
   await openAccount(login);
   await login.getByText('已完成 FastCAS 认证').waitFor();
+  await login.getByRole('separator',{name:'调整研究助手宽度'}).press('End');
+  assert.equal((await captureTaskStorage(login)).local['fasttask.research-assistant.width'],'800','assistant End did not persist its maximum width');
   assertTaskStorage(await captureTaskStorage(login),cas);
   const storageCases=await verifyTaskStorageBoundary(login,cas);
   await fillMDUI(page,'确认本地 FastTask 密码','password-for-tests');

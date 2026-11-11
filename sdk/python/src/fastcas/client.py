@@ -146,7 +146,7 @@ class FastCAS:
     def _begin(self, purpose, binding, return_to, scopes, local_ref="", session="") -> str:
         if len(binding) < 32:
             raise FastCASError("binding_required", "Fresh browser binding required")
-        if not return_to.startswith("/") or return_to.startswith("//") or any(c in return_to for c in "\\\r\n"):
+        if not return_to.startswith("/") or return_to.startswith("//") or "\\" in return_to or any(ord(character) < 32 or ord(character) == 127 for character in return_to):
             raise FastCASError("invalid_return_to", "Application-relative return path required")
         endpoint = self.discovery()["authorization_endpoint"]
         tx = dict(state=secrets.token_urlsafe(32), nonce=secrets.token_urlsafe(32), verifier=secrets.token_urlsafe(32), binding_hash=_hash(binding), purpose=purpose, return_to=return_to, expires_at=time.time()+300)

@@ -13,11 +13,12 @@ export function assertTaskStorage(storage,profile){
  assert.deepEqual(Object.keys(storage.local).sort(),[openKey,widthKey,profileKey,'fasttask_refresh'],'unexpected browser storage');
  assert.deepEqual(Object.keys(storage.session),[],'unexpected session storage');
  // Task App writes String(boolean). ResearchWorkspace rounds and clamps width
- // to 320..560, then writes String(number); permissive read coercion is not a
+ // to 320..800, then writes String(number). Its displayed width may be smaller
+ // on a narrow workspace; End still persists 800. Read coercion is not a
  // licence to retain noncanonical strings or credentials in layout preferences.
  assert.ok(['true','false'].includes(storage.local[openKey]),'invalid assistant open preference');
  const width=storage.local[widthKey];
- assert.ok(typeof width==='string'&&/^[1-9]\d*$/.test(width)&&Number.isInteger(Number(width))&&Number(width)>=320&&Number(width)<=560,'invalid assistant width preference');
+ assert.ok(typeof width==='string'&&/^[1-9]\d*$/.test(width)&&Number.isInteger(Number(width))&&Number(width)>=320&&Number(width)<=800,'invalid assistant width preference');
  const offlineUser=JSON.parse(storage.local[profileKey]);
  assert.deepEqual(Object.keys(offlineUser).sort(),profileFields,'offline user cache contains unexpected fields');
  assert.deepEqual(offlineUser,profile,'offline user cache differs from project profile');
@@ -47,7 +48,7 @@ export async function verifyTaskStorageBoundary(page,profile){
   }finally{await restore()}
  }
  try{
-  for(const open of ['true','false'])for(const width of ['320','400','560']){
+  for(const open of ['true','false'])for(const width of ['320','400','560','561','799','800']){
    await set('local',openKey,open);await set('local',widthKey,width);
    assertTaskStorage(await captureTaskStorage(page),profile);
    results.push({name:`canonical-${open}-${width}`,accepted:true});
@@ -59,7 +60,7 @@ export async function verifyTaskStorageBoundary(page,profile){
    await rejected(`missing-${key}`,'local',key,null,/unexpected browser storage/);
   for(const value of ['','TRUE','False','1','0','null',' true','false ','synthetic-secret','{"token":"synthetic-secret"}'])
    await rejected(`invalid-open-${JSON.stringify(value)}`,'local',openKey,value,/invalid assistant open preference/);
-  for(const value of ['','319','561','-320','320.5','0320','+320','3.2e2','0x140',' 320','320 ','NaN','Infinity','synthetic-secret','{"token":"synthetic-secret"}'])
+  for(const value of ['','319','801','-320','320.5','800.5','0320','0800','+320','3.2e2','8e2','0x140',' 320','320 ','NaN','Infinity','synthetic-secret','{"token":"synthetic-secret"}'])
    await rejected(`invalid-width-${JSON.stringify(value)}`,'local',widthKey,value,/invalid assistant width preference/);
   for(const key of ['unexpected','access_token','id_token','fastcas_token','fasttask_refresh',openKey,widthKey])
    await rejected(`session-${key}`,'session',key,'synthetic-credential',/unexpected session storage/);
