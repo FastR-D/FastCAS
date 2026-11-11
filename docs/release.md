@@ -69,3 +69,5 @@ pnpm 10 调用 npm 时会优先搜索 Node 可执行文件所在目录，因此 
 调整顶部对齐之前的两次独立构建（`.local/release-20261111/` 与 `.local/release-repro-20261111/`）SHA256SUMS 逐字节一致；最终对齐样式另打包到上述 final 目录。
 
 本轮版本更新至 0.1.2；删除 Seven-project integration workflow，七项目仍通过本地 `make verify-contracts` 验收。`sdk/go/testdata/` 为本地忽略目录，三语言共享 fixture 位于 `contracts/`，不再放入 Go SDK 发布源码包。
+
+SDK 0.1.2 已于本轮正式发布：[GitHub 发布流程](https://github.com/FastR-D/FastCAS/actions/runs/42985057410)全部成功，npm `@fastrd/fastcas@0.1.2`、PyPI `fastcas-sdk==0.1.2`、Go `sdk/go/v0.1.2` 均可安装。发布提交为 `718f4a6`，七个接入项目已更新为正式版本引用并推送，运行时不依赖同级 SDK 源码。三语言发布后的实际集成门禁通过 28/28。

@@ -30,3 +30,5 @@
 同轮容量烟测通过：64 个独立浏览器会话登录/刷新完成，本机登录 p95 约 1.23 秒、刷新 p95 约 30 毫秒；256 条事件积压由 8 个 worker 处理，投递 p95 约 288 毫秒；128 条首次 503 的通知约 2.27 秒后全部恢复。本机隔离数字不作为生产 SLO。调整左右顶部栏分隔线后，另一次真实 Chrome 契约通过并刷新桌面截图；两侧使用共同的 74px 高度。
 
 按要求移除 Seven-project integration Action；七项目回归保留本地脚本入口。SDK CI 和发布 workflow 保留。共享 Go 验签测试位于主模块 `contracts` 包，和 TS/Python 读取同一个已跟踪 fixture；忽略的 `sdk/go/testdata/` 不影响干净检出。
+
+0.1.2 发布后再次验证：npm/PyPI 包与 Go 模块均从正式 registry 安装，七项目回归通过；去掉项目测试中的本地 SDK PYTHONPATH 覆盖后，修正 FastNews 浏览器脚本的项目模块搜索路径，随后重新执行全部真实提供方门禁，**28/28 通过**。记录为 `.local/v012-provider-gate.log`，内部回归在 `.local/v012-full-verification.log`。SDK 4 项远端 CI、发布流程以及 FastCAS core CI 全部成功。FastTask 全包单测与 vet 也通过；FastResearch Docker 镜像构建成功，断网加载 SDK 返回 0.1.2。

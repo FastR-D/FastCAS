@@ -4,13 +4,27 @@
 
 下文保留阶段性施工记录；旧段落中的“尚未完成”描述只代表写入时的状态，以顶部最新增量和各项目接入说明判断当前实现。
 
+2026-11-11 SDK **0.1.2 已正式发布**：[发布流程](https://github.com/FastR-D/FastCAS/actions/runs/42985057410)的 SDK 四项检查、npm、PyPI 和 Go tag job 全部成功；`v0.1.2` 与 `sdk/go/v0.1.2` 指向 `718f4a6`。移除 Seven-project integration Action，`sdk/go/testdata/` 加入忽略，三语言共享 fixture 与 Go 契约放在主仓库 `contracts/`。七个项目均固定正式 0.1.2 包或模块、更新锁文件并推送 main；原有独立入口与 FastWrite 用户未提交 UI 文件保持原样。
+
+七项目接入提交：
+
+- FastWrite：[`7a39b19`](https://github.com/FastR-D/FastWrite/commit/7a39b190025986b9b7de28f5475b2ff5b146be4f)。
+- FastTask：[`c240c9c`](https://github.com/FastR-D/FastTask/commit/c240c9cd84cbe897a146b33185f49ba46b11fe05)。
+- FastRead：[`7ab7510`](https://github.com/FastR-D/FastRead/commit/7ab7510e89773e868b78d4b46db29b0294b9c1d7)。
+- FastResearch：[`982a89d`](https://github.com/FastR-D/FastResearch/commit/982a89dd4326f8fe4a2374949e90634332c750b0)。
+- FastNews：[`3443572`](https://github.com/FastR-D/FastNews/commit/344357259886e21e8c3ff1eb001c014c86f52020)。
+- FastInsight：[`3c51188`](https://github.com/FastR-D/FastInsight/commit/3c51188ca89d7a03e47ce51308030fb3fae23436)。
+- FastLabs：[`08bbb44`](https://github.com/FastR-D/FastLabs/commit/08bbb442582919151bc7dd92713392b19420c1f0)。
+
+使用发布后的包完成内部回归及 28/28 真实提供方/浏览器契约；项目 Python 回归不再通过 PYTHONPATH 强制覆盖为本地 SDK。FastTask 全量 `go test ./...` 与 vet 通过，FastResearch 容器已构建并在断网条件下确认加载 npm 0.1.2。生产域名、真实用户数据迁移和 SLO 验收仍单独进行。
+
 2026-11-11 全范围代码收尾：先更新所有同级 FastRD 仓库并核对 `origin/main`；FastRead 快进到 `962f3d0`、FastResearch 到 `8bf03b3`，补齐 FastLabs `72f8fa2` 与 FastNews `0529942`。FastTask 远端历史重写，原 main 保存在 `codex/preserved-main-20261111`，新 main 对齐 `8e91d76`；补回上游缺失的账号认证入口和契约测试。FastWrite 原有九个未提交文件经 SHA-256 复核保持原样。FastFigure 与其余项目均已对齐，各仓库提交/差异快照在本地 `.local/project-update-result.json`。
 
 本轮按原规划补齐五个账号项目的 provider / login / existing-account-link 独立开关，保留默认兼容、来源会话与撤销通道。TS/Go/Python 使用同一份 19 组离线签名令牌正反例；据此修正缺失 `iat`/`scope`、空 subject 与未来签发时间的跨语言差异，Python SQLite 事务连接改为明确关闭。审计增加事务结果与服务生成的请求编号（016 迁移），历史记录保留 unknown；版本前置条件失败返回 412、限流错误补齐统一结构。FastUI 桌面前端增加一致的 Lucide 线性图标，保留文字及可访问名称，无窄屏适配。
 
 最新本地验收：`make verify-contracts` 已通过七项目内部回归和 **28/28** 必需真实提供方/浏览器案例；TS SDK 23 测、Python SDK 6 测、Go SDK race、OpenAPI 46 路由、服务端 race/vet 均通过。新增的 stale-version Go SDK HTTP 契约另通过。FastWrite 14 项、FastRead 19 项、FastResearch 10 项、FastNews 17 项、FastInsight 45 项、FastLabs 53 项及 FastTask 三核心包 race 通过。记录见 [验收说明](verification.md)。本地发布包位于 `.local/release-final-20261111/`，含服务、Web、三 SDK、OpenAPI、manifest 与 SHA256SUMS，隔离安装/编译和校验通过。
 
-按后续要求移除七项目手动 CI Action，保留本地全项目门禁。代码仍在各工作区，尚未代替用户提交/推送；远端 Actions、真实 registry 上传、生产域名/TLS、生产数据迁移及持续负载验收不记为完成。P0–P6 下面的勾选仅表示代码与相应本地证据，不将生产工作混入代码完成结论。
+按后续要求移除七项目手动 CI Action，保留本地全项目门禁。该段为提交前记录；最新的提交、发布和验证状态见顶部 0.1.2 增量。生产域名/TLS、生产数据迁移及持续负载验收不记为完成。P0–P6 下面的勾选仅表示代码与相应本地证据，不将生产工作混入代码完成结论。
 
 2026-09-23 七项目远端同步：逐个 fetch 并核对 `origin/main`，仅 FastTask 有 34 个新提交；本地 `main` 已快进到 `7b3d431`，其余六项目已对齐。FastTask 未提交的 FastCAS 接入已恢复并与上游 PWA、Agent harness 合并；原 CAS 迁移 6 改为 9，并增加旧迁移 6 数据库兼容升级测试。FastTask Go 全量测试、vet、前端 169 项测试、生产构建和隔离容器启动通过；真实 Chrome 契约确认 PWA 离线用户缓存仅为项目资料，访问令牌不落盘。完整 `make verify-contracts` 再次通过七项目回归及 28/28 真实提供方/浏览器契约。FastTask 合并前快照仍保留在 Git stash，原有未提交接入仍在工作树；未推送远端。
 
@@ -114,7 +128,7 @@
 - [x] P5 Device flow、受限 token exchange、服务授权与本机 SDK 示例；非账户型工具不强制新增登录墙。
 - [x] P6 管理/绑定 OpenAPI、React UI、部署及迁移/备份/恢复/回滚代码、发布构建与 CI 入口；本地门禁通过。
 
-- [ ] P6 生产发布验收：正式域名/TLS、真实数据演练、各仓库接入提交后的远端 CI、registry/Go tag 发布与生产 SLO。
+- [ ] P6 生产发布验收：正式域名/TLS、真实数据演练与生产 SLO（registry 与 Go tag 发布已完成，七项目 CI 按要求移除）。
 
 ## 当前证据
 
