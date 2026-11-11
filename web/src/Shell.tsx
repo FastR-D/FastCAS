@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Button, Select, Badge } from "@fastrd/ui-react";
-import { initColorMode, type ColorMode } from "@fastrd/ui-foundation";
+import type { ColorMode } from "@fastrd/ui-foundation";
 import {
   ShieldCheck,
   Link2,
@@ -23,8 +23,7 @@ import {
 } from "lucide-react";
 import { Icon } from "./Icon";
 
-// Initialize before React mounts; only the non-sensitive theme preference is persisted.
-const theme = initColorMode({ storageKey: "fastcas.color-mode" });
+const theme = window.fastCASColorMode;
 const groups: { label: string; items: [string, string, LucideIcon][] }[] = [
   {
     label: "个人账号",

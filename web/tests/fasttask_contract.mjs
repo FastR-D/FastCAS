@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
 import {chromium} from 'playwright-core';
+import {mkdir,writeFile} from 'node:fs/promises';
+import {assertTaskStorage,captureTaskStorage,verifyTaskStorageBoundary} from './fasttask_storage_contract.mjs';
 
 const {FASTCAS_CONTRACT_TASK_ORIGIN: origin, FASTCAS_CONTRACT_ISSUER: issuer} = process.env;
 if(!origin||!issuer)throw Error('FastTask browser contract configuration missing');
@@ -55,16 +57,10 @@ try{
   assert.equal(cas.role,local.role,'FastCAS login changed project role');
   await openAccount(login);
   await login.getByText('已完成 FastCAS 认证').waitFor();
-  const storage=await login.evaluate(()=>({
-   keys:Object.keys(localStorage).sort(),
-   offlineUser:localStorage.getItem('fasttask_offline_user'),
-   sessionKeys:Object.keys(sessionStorage),
-  }));
-  assert.deepEqual(storage.keys,['fasttask_offline_user','fasttask_refresh'],'unexpected browser storage');
-  assert.deepEqual(storage.sessionKeys,[],'unexpected session storage');
-  const offlineUser=JSON.parse(storage.offlineUser);
-  assert.deepEqual(Object.keys(offlineUser).sort(),['$schema','created_at','display_name','id','identifier','locale','revision','role','status','timezone','updated_at'],'offline user cache contains unexpected fields');
-  assert.deepEqual(offlineUser,cas,'offline user cache differs from project profile');
+  await login.getByRole('separator',{name:'调整研究助手宽度'}).press('End');
+  assert.equal((await captureTaskStorage(login)).local['fasttask.research-assistant.width'],'800','assistant End did not persist its maximum width');
+  assertTaskStorage(await captureTaskStorage(login),cas);
+  const storageCases=await verifyTaskStorageBoundary(login,cas);
   await fillMDUI(page,'确认本地 FastTask 密码','password-for-tests');
   await page.getByText('解除 FastCAS 认证',{exact:true}).click();
   await page.getByText('当前账号未认证').waitFor();
@@ -73,8 +69,12 @@ try{
   const restoredMe=meResponse(page);
   await page.reload({waitUntil:'networkidle'});
   assert.equal((await(await restoredMe).json()).id,local.id,'local session did not survive unlink');
+  await mkdir(new URL('../../.local/fasttask-contract/',import.meta.url),{recursive:true});
+  await writeFile(new URL('../../.local/fasttask-contract/results.json',import.meta.url),JSON.stringify({
+   storageCases,profileExact:true,unlinkCompleted:true,casSessionRevoked:true,localSessionPreserved:true,stableUserAndRole:true,
+  },null,2));
  }finally{await second.close()}
- console.log('FastTask browser contract passed: local administrator, explicit link, FastCAS login, revoke isolation, stable user and role');
+ console.log('FastTask browser contract passed: local administrator, explicit link, FastCAS login, exact storage/profile and rejection cases, browser unlink, CAS session revoked, local session preserved, stable user and role');
 }catch(error){
  console.error('browser state:',page.url(),(await page.locator('body').innerText().catch(()=>'' )).slice(0,700));
  throw error;

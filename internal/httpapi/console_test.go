@@ -59,7 +59,7 @@ func TestConsoleAuthManifestValidation(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	for _, path := range []string{"index.html", "assets/auth.js", "assets/foundation.js", "assets/auth.css", "assets/foundation.css"} {
+	for _, path := range []string{"index.html", "assets/theme-init.js", "assets/auth.js", "assets/foundation.js", "assets/auth.css", "assets/foundation.css"} {
 		if err := os.WriteFile(filepath.Join(dir, path), []byte("fixture"), 0600); err != nil {
 			t.Fatal(err)
 		}

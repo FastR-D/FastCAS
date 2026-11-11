@@ -1,9 +1,8 @@
-import { initColorMode } from "@fastrd/ui-foundation";
 import "@fastrd/ui-react/styles.css";
 import "./auth.css";
 
 // Authentication remains a native, server-validated form, including without JavaScript.
-const theme = initColorMode({ storageKey: "fastcas.color-mode" });
+const theme = window.fastCASColorMode;
 const select = document.querySelector<HTMLSelectElement>("[data-theme-select]");
 if (select) {
   select.value = theme.mode;

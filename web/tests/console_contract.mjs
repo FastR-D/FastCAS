@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdir } from "node:fs/promises";
+import { mkdir, writeFile } from "node:fs/promises";
 import { createHmac } from "node:crypto";
 import { chromium } from "playwright-core";
 
@@ -20,6 +20,7 @@ const context = await browser.newContext({
 });
 const page = await context.newPage();
 const uiErrors = [];
+const integrationChecks = [];
 page.on("pageerror", (error) => uiErrors.push(error.message));
 await mkdir("../.local/ui-verification", { recursive: true });
 const screenshot = async (name) => {
@@ -46,6 +47,85 @@ const acceptConfirmation = async () =>
     .getByRole("dialog", { name: "确认操作" })
     .getByRole("button", { name: "确认并继续" })
     .click();
+// Delay only the application module: inspect the actual server-delivered page
+// after the blocking bootstrap, before either React or auth controls execute.
+async function firstPaint(path, stored, system, expected, denyStorage = false) {
+  const isolated = await browser.newContext({ colorScheme: system });
+  try {
+    await isolated.addInitScript(({ stored, denyStorage }) => {
+      if (stored !== null) localStorage.setItem("fastcas.color-mode", stored);
+      if (denyStorage) {
+        Storage.prototype.getItem = Storage.prototype.setItem = () => {
+          throw new DOMException("Storage denied", "SecurityError");
+        };
+      }
+    }, { stored, denyStorage });
+    const target = await isolated.newPage();
+    const errors = [];
+    target.on("pageerror", (error) => errors.push(error.message));
+    let release;
+    const held = new Promise((resolve) => { release = resolve; });
+    await target.route(/\/assets\/(console|auth)-.*\.js$/, async (route) => {
+      await held;
+      await route.continue();
+    });
+    try {
+      await target.goto(origin + path, { waitUntil: "commit" });
+      await target.waitForFunction(() => window.fastCASColorMode, { timeout: 5000 });
+      const controller = await target.evaluateHandle(() => window.fastCASColorMode);
+      assert.equal(await target.locator("html").getAttribute("data-fastui-theme"), expected);
+      release();
+      await target.getByLabel("界面主题").waitFor();
+      assert.equal(await target.evaluate((initial) => window.fastCASColorMode === initial, controller), true,
+        "application replaced the first-paint controller");
+      if (path === "/console/") {
+        await target.getByLabel("一次性凭证").fill("unsubmitted-draft-token");
+        await target.getByLabel("姓名").fill("主题草稿");
+        await target.getByLabel("新密码", { exact: true }).fill("draft-password-123");
+        await target.getByLabel("确认新密码").fill("different-password-456");
+        await target.getByRole("button", { name: "创建 FastCAS 账号" }).click();
+        await target.getByRole("alert").getByText("两次输入的密码不一致").waitFor();
+      } else {
+        await target.locator("input[name=email]").fill("draft@example.test");
+      }
+      await target.getByLabel("界面主题").selectOption(expected === "dark" ? "light" : "dark");
+      assert.equal(await target.locator("html").getAttribute("data-fastui-theme"), expected === "dark" ? "light" : "dark");
+      assert.deepEqual(errors, []);
+      integrationChecks.push({ path, stored, system, denyStorage, firstPaint: expected, sameController: true });
+    } finally {
+      release();
+    }
+  } finally {
+    await isolated.close();
+  }
+}
+
+async function preserveSecurityDraft() {
+  await page.getByLabel("界面主题").selectOption("system");
+  const input = page.getByLabel("新 FastCAS 密码", { exact: true });
+  await input.fill("preserved-password-draft-123");
+  await input.focus();
+  const original = await input.elementHandle();
+  const assertDraft = async () => {
+    assert.equal(await input.inputValue(), "preserved-password-draft-123");
+    assert.equal(await input.evaluate((element, initial) => element === initial && element === document.activeElement, original), true,
+      "theme change remounted or blurred the security form");
+  };
+  await page.emulateMedia({ colorScheme: "dark" });
+  await page.waitForFunction(() => document.documentElement.dataset.fastuiTheme === "dark");
+  await assertDraft();
+  const other = await context.newPage();
+  try {
+    await other.goto(origin + "/console/");
+    await other.getByLabel("界面主题").selectOption("light");
+    await page.waitForFunction(() => document.documentElement.dataset.fastuiTheme === "light");
+    await assertDraft();
+  } finally {
+    await other.close();
+  }
+  await input.fill("");
+  integrationChecks.push({ securityDraft: "system-and-cross-tab", sameInput: true, focus: true });
+}
 page.setDefaultTimeout(5000);
 function totp(uri) {
   const secret = new URL(uri).searchParams.get("secret");
@@ -78,6 +158,13 @@ function totp(uri) {
   return String(number % 1000000).padStart(6, "0");
 }
 try {
+  for (const path of ["/console/", "/login"]) {
+    await firstPaint(path, "dark", "light", "dark");
+    await firstPaint(path, "light", "dark", "light");
+    await firstPaint(path, "invalid", "dark", "dark");
+    await firstPaint(path, null, "light", "light");
+    await firstPaint(path, null, "dark", "dark", true);
+  }
   await page.goto(
     `${origin}/console/?flow=invite&token=${encodeURIComponent(invite)}`,
     { waitUntil: "networkidle" },
@@ -131,6 +218,10 @@ try {
     .fill("invited-reader-password-123");
   await page.getByRole("button", { name: "登录", exact: true }).click();
   await page.getByRole("heading", { name: "你好，Invited Reader" }).waitFor();
+  assert.equal(await page.getByRole("button", { name: "应用管理", exact: true }).count(), 0);
+  assert.equal(await page.getByRole("button", { name: "调用策略", exact: true }).count(), 0);
+  assert.equal(await page.getByRole("button", { name: "失败投递", exact: true }).count(), 0);
+  await preserveSecurityDraft();
   await page.getByLabel("原 FastCAS 密码").fill("invited-reader-password-123");
   await page
     .getByLabel("新 FastCAS 密码", { exact: true })
@@ -586,6 +677,7 @@ try {
     "administrator retained management access after MFA reset",
   );
   assert.deepEqual(uiErrors, [], "browser JavaScript errors");
+  await writeFile("../.local/ui-verification/integration-results.json", JSON.stringify({ checks: integrationChecks, browserErrors: uiErrors, consoleContract: "passed" }, null, 2));
   console.log(
     "FastCAS browser contract passed: invite, login, logout, password and MFA recovery, MFA enrollment and recovery-code rotation, audit filtering and pagination, FastUI light/dark desktop themes, accessible application configuration dialogs, cancelled rotation, one-time secret isolation, delivery history, developer integration guide, application registration, service lifecycle, secret rotation and invitation",
   );

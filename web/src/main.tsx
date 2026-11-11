@@ -315,7 +315,7 @@ function App() {
           {page === "integration" && me.user.role === "admin" && (
             <Integration api={api} busy={busy} run={run} />
           )}
-          {page === "exchange-policies" && (
+          {page === "exchange-policies" && me.user.role === "admin" && (
             <Delegations key="admin" api={api} busy={busy} run={run} admin />
           )}
           {page === "sessions" && (
@@ -386,7 +386,7 @@ function App() {
             ].includes(page) && (
               <Admin key={page} page={page} api={api} busy={busy} run={run} />
             )}
-          {page === "outbox" && (
+          {page === "outbox" && me.user.role === "admin" && (
             <section>
               <h2>失败投递</h2>
               <p>

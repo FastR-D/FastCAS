@@ -10,8 +10,9 @@ import (
 )
 
 type authAssets struct {
-	Script string
-	Styles []string
+	Bootstrap string
+	Script    string
+	Styles    []string
 }
 
 // Read the Vite manifest at startup. Authentication pages consume the same
@@ -76,6 +77,9 @@ func readAuthAssets(dir string) (authAssets, error) {
 		return result, err
 	}
 	result.Script, err = asset(manifest["src/auth.ts"].File, ".js")
+	if err == nil {
+		result.Bootstrap, err = asset("assets/theme-init.js", ".js")
+	}
 	if err == nil && len(result.Styles) == 0 {
 		return result, fmt.Errorf("console auth styles missing")
 	}
@@ -85,7 +89,7 @@ func readAuthAssets(dir string) (authAssets, error) {
 func authTemplate(name, body string) *template.Template {
 	return template.Must(template.New(name).Parse(`
 {{define "auth-head"}}<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>{{.Title}} · FastCAS</title>
-{{range .Assets.Styles}}<link rel="stylesheet" href="{{.}}">{{end}}{{if .Assets.Script}}<script type="module" src="{{.Assets.Script}}"></script>{{end}}{{end}}
+{{if .Assets.Bootstrap}}<script src="{{.Assets.Bootstrap}}"></script>{{end}}{{range .Assets.Styles}}<link rel="stylesheet" href="{{.}}">{{end}}{{if .Assets.Script}}<script type="module" src="{{.Assets.Script}}"></script>{{end}}{{end}}
 {{define "auth-toolbar"}}<div class="auth-toolbar"><span class="auth-brand">FASTR-D / IDENTITY</span>{{if .Assets.Script}}<select class="fastui-select fastui-select--sm" data-theme-select aria-label="界面主题"><option value="system">跟随系统</option><option value="light">浅色主题</option><option value="dark">深色主题</option></select>{{end}}</div>{{end}}
 {{define "auth-footer"}}<p class="auth-note">FastCAS · 可选认证，独立账号<br>各项目的账号、内容和权限由项目独立管理。</p>{{end}}
 ` + body))

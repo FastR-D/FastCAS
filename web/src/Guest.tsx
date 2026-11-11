@@ -199,7 +199,7 @@ export function Guest({ initial }: { initial: InitialCredential }) {
                 </label>
               )}
               {error && <Alert tone="danger">{error}</Alert>}
-              <Button type="submit" variant="primary" disabled={busy}>
+              <Button type="submit" variant="primary" loading={busy}>
                 {busy
                   ? "正在提交…"
                   : flow === "invite"

@@ -15,7 +15,7 @@ pnpm run build
 
 审计支持操作名称、执行者 ID、目标 ID 的精确匹配和开始/结束时间组合筛选；分页保留已应用条件，重置与刷新从首屏重新查询。输入时间使用浏览器时区，发送时转为 UTC；开始时间包含、结束时间排除。后台迁移 `015_audit_filters.sql` 为检索与分页增加索引。
 
-主题支持浅色、深色和跟随系统，使用 foundation 的颜色模式控制器；仅 `fastcas.color-mode` 偏好写入 localStorage。一次性凭证、客户端密钥、恢复码和认证器密钥只保存在当前页面内存中；离开对应页面会卸载组件并清空显示，管理页之间不会复用密钥。查询参数中的邀请/恢复凭证在 React 发出请求前从地址栏清除。凭证须通过可信渠道私密交付。
+主题支持浅色、深色和跟随系统，使用 foundation 的颜色模式控制器；仅 `fastcas.color-mode` 偏好写入 localStorage。同源经典脚本 `assets/theme-init.js` 在 head 阻塞初始化首屏主题，Shell 和原生认证页复用同一 controller，系统或跨标签主题变化保持表单 DOM、草稿和焦点。一次性凭证、客户端密钥、恢复码和认证器密钥只保存在当前页面内存中；离开对应页面会卸载组件并清空显示，管理页之间不会复用密钥。查询参数中的邀请/恢复凭证在 React 发出请求前从地址栏清除。凭证须通过可信渠道私密交付。
 
 公开表单入口为 `/console/?flow=invite`、`?flow=recovery`、`?flow=mfa_reset`，支持手动凭证或 `token` 查询参数。切换流程清空原凭证与密码。成功后提示独立登录，各项目账号不会自动创建或合并。
 
@@ -29,7 +29,7 @@ FASTCAS_BROWSER_CONTRACT=1 \
 go test ./internal/httpapi -run '^TestConsoleAgainstRealBrowser$' -count=1 -v
 ```
 
-该契约使用隔离 schema、真实 HTTP 和构建产物，覆盖注册、登录、改密、恢复、MFA、分页、审计筛选、应用配置保存/失败重试/取消、焦点恢复、密钥轮换与清除、服务生命周期和设备确认。也验证禁用 JavaScript 时的原生登录、桌面深浅主题和主题持久化；截图保存在 `.local/ui-verification/`，只含隔离测试数据。`TestAuditFiltersAndPagination` 验证服务端时间边界、组合筛选、分页、非法条件与权限；`TestConsoleAuthManifestValidation` 验证产物完整性与路径约束。
+该契约使用隔离 schema、真实 HTTP 和构建产物，覆盖注册、登录、改密、恢复、MFA、分页、审计筛选、应用配置保存/失败重试/取消、焦点恢复、密钥轮换与清除、服务生命周期和设备确认。也验证禁用 JavaScript 时的原生登录、桌面深浅主题和主题持久化；延迟应用模块检查 console/login 的保存偏好、系统默认、无效值和存储拒绝首屏，以及首屏 controller 同一性和安全表单跨主题保持。截图和 `integration-results.json` 保存在 `.local/ui-verification/`，只含隔离测试数据。`TestAuditFiltersAndPagination` 验证服务端时间边界、组合筛选、分页、非法条件与权限；`TestConsoleAuthManifestValidation` 验证产物完整性与路径约束。
 
 这轮完成控制台基础重构与审计检索，不代表全部商业化规划完成。真实域名部署、监控告警、备份恢复和跨项目容量/SLO 验收仍需按项目交付清单推进。
 
