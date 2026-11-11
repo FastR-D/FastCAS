@@ -531,6 +531,16 @@
               }
             }
           },
+          "412": {
+            "description": "Link version changed; reload before retrying",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
           "428": {
             "description": "If-Match version required",
             "content": {
@@ -4063,7 +4073,7 @@
     "/api/v1/admin/audit-events": {
       "get": {
         "operationId": "listAuditEvents",
-        "summary": "List audit events, newest first",
+        "summary": "Filter audit events, newest first",
         "tags": [
           "Administration"
         ],
@@ -4145,7 +4155,52 @@
               "type": "integer",
               "minimum": 1
             },
-            "description": "Return events with IDs lower than this cursor."
+            "description": "Return events with IDs lower than this cursor; maximum 100 per page. Preserve filters on subsequent pages."
+          },
+          {
+            "name": "action",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "maxLength": 200
+            },
+            "description": "Exact match after trimming whitespace; at most 200 UTF-8 bytes. Empty means no filter."
+          },
+          {
+            "name": "actor",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "maxLength": 200
+            },
+            "description": "Exact match after trimming whitespace; at most 200 UTF-8 bytes. Empty means no filter."
+          },
+          {
+            "name": "target",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "maxLength": 200
+            },
+            "description": "Exact match after trimming whitespace; at most 200 UTF-8 bytes. Empty means no filter."
+          },
+          {
+            "name": "since",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "description": "Inclusive start time in RFC3339 with timezone."
+          },
+          {
+            "name": "until",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "description": "Exclusive end time in RFC3339 with timezone; must be later than since."
           }
         ]
       }
@@ -4746,6 +4801,17 @@
           "created_at": {
             "type": "string",
             "format": "date-time"
+          },
+          "request_id": {
+            "type": "string"
+          },
+          "result": {
+            "type": "string",
+            "enum": [
+              "unknown",
+              "success",
+              "failure"
+            ]
           }
         },
         "additionalProperties": false,
@@ -4754,7 +4820,9 @@
           "actor",
           "action",
           "target",
-          "created_at"
+          "created_at",
+          "request_id",
+          "result"
         ]
       },
       "OutboxEvent": {

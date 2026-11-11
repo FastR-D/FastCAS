@@ -8,6 +8,15 @@ importers:
 
   .:
     dependencies:
+      '@fastrd/ui-foundation':
+        specifier: 0.1.2
+        version: 0.1.2
+      '@fastrd/ui-react':
+        specifier: 0.1.2
+        version: 0.1.2(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      lucide-react:
+        specifier: 1.72.0
+        version: 1.72.0(@types/react@19.2.14)(react@19.2.4)
       react:
         specifier: 19.2.4
         version: 19.2.4
@@ -189,6 +198,15 @@ packages:
     cpu: [x64]
     os: [win32]
 
+  '@fastrd/ui-foundation@0.1.2':
+    resolution: {integrity: sha512-Jobx7DanQOejVRFfsT5DFXND7rtcvSUzZ5Zui+lY3oAuretz8vwkzqHh1Gd0+ezJubw82WeFsnsXdvbWB4t1YA==}
+
+  '@fastrd/ui-react@0.1.2':
+    resolution: {integrity: sha512-/7WrTu/LrsMWcJKQglQBmpe+sXWj0hGUt66mgrZ3f6B/5dZfb03xdrbPSKRRGFmCA8H6O8stmU9oOFMSuW7YHQ==}
+    peerDependencies:
+      react: ^18.3.0 || ^19.0.0
+      react-dom: ^18.3.0 || ^19.0.0
+
   '@napi-rs/lzma-linux-x64-gnu@1.5.1':
     resolution: {integrity: sha512-oTXEIha4SsuXdTA4Iyskj0kpdx2yVXdhd75c2v3xGrHFfVMsbhTPZU/nMPL4sWKo4pBHm3aucLaqGlF696dTyQ==}
     engines: {node: ^22.20 || ^24.12 || >=25}
@@ -367,6 +385,15 @@ packages:
     engines: {node: ^8.16.0 || ^10.6.0 || >=11.0.0}
     os: [darwin]
 
+  lucide-react@1.72.0:
+    resolution: {integrity: sha512-fbF5i1GU8GODETa3Q7rXqrJrcx3iPYrQtxthom103zGx+Z0BGwKYAW9s+9435ohYJ7hQm0av0PoZcqI1CRwNrg==}
+    peerDependencies:
+      '@types/react': '*'
+      react: ^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0
+    peerDependenciesMeta:
+      '@types/react':
+        optional: true
+
   nanoid@3.3.19:
     resolution: {integrity: sha512-Y2tUNy4ouw6tq5oDSKeQYGOyhkUBhNOcGV/02KC+6kd9eDGqdZd++mjMiIDilrBYvjEnCYvVtsuHCuP+okSfug==}
     engines: {node: ^10 || ^12 || ^13.7 || ^14 || >=15.0.1}
@@ -538,6 +565,14 @@ snapshots:
   '@esbuild/win32-x64@0.25.12':
     optional: true
 
+  '@fastrd/ui-foundation@0.1.2': {}
+
+  '@fastrd/ui-react@0.1.2(react-dom@19.2.4(react@19.2.4))(react@19.2.4)':
+    dependencies:
+      '@fastrd/ui-foundation': 0.1.2
+      react: 19.2.4
+      react-dom: 19.2.4(react@19.2.4)
+
   '@napi-rs/lzma-linux-x64-gnu@1.5.1':
     optional: true
 
@@ -663,6 +698,12 @@ snapshots:
 
   fsevents@2.3.3:
     optional: true
+
+  lucide-react@1.72.0(@types/react@19.2.14)(react@19.2.4):
+    dependencies:
+      react: 19.2.4
+    optionalDependencies:
+      '@types/react': 19.2.14
 
   nanoid@3.3.19: {}
 

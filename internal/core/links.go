@@ -157,7 +157,7 @@ func (s *Store) RevokeLink(ctx context.Context, client, id string, expected int6
 		return &link, nil
 	}
 	if link.Version != expected {
-		return nil, ErrConflict
+		return nil, ErrPrecondition
 	}
 	link.Version++
 	link.State = "revoked"

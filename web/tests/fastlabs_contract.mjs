@@ -50,11 +50,11 @@ try{
  await approval.getByRole('button',{name:'加载更多安装'}).click();
  await oldest.waitFor();
  const oldInstallation=approval.locator('article').filter({hasText:'550e8400-e29b-41d4-a716-000000000001'});
- approval.once('dialog',dialog=>dialog.accept());
  await oldInstallation.getByRole('button',{name:'撤销关联'}).click();
+ await approval.getByRole('dialog',{name:'确认操作'}).getByRole('button',{name:'确认并继续'}).click();
  await oldInstallation.getByText('已撤销').waitFor();
- approval.once('dialog',dialog=>dialog.accept());
  await installation.getByRole('button',{name:'撤销关联'}).click();
+ await approval.getByRole('dialog',{name:'确认操作'}).getByRole('button',{name:'确认并继续'}).click();
  await installation.getByText('已撤销').waitFor();
  assert.equal((await status()).link.subject,subject,'center revoke changed local state without a local status check');
  const began=Date.now();let converged=false;

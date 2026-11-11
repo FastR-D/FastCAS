@@ -5,6 +5,7 @@ import (
 	"github.com/FastR-D/FastCAS/internal/core"
 	"github.com/FastR-D/FastCAS/internal/httpapi"
 	"github.com/FastR-D/FastCAS/internal/testutil"
+	"github.com/zitadel/oidc/v3/pkg/oidc"
 	"net/http/httptest"
 	"os"
 	"os/exec"
@@ -47,6 +48,9 @@ func TestConsoleAgainstRealBrowser(t *testing.T) {
 		t.Fatal(err)
 	}
 	if err = store.RegisterClient(ctx, core.Client{ID: "browser-contract-receiver", Name: "Receiver", Development: true, Redirects: []string{"http://127.0.0.1/callback"}, Scopes: []string{"openid"}}, "long-enough-test-client-secret-32-characters"); err != nil {
+		t.Fatal(err)
+	}
+	if err = store.RegisterClient(ctx, core.Client{ID: "browser-device", Name: "Browser device", Public: true, Scopes: []string{"openid"}, Grants: []oidc.GrantType{oidc.GrantTypeDeviceCode}}, ""); err != nil {
 		t.Fatal(err)
 	}
 	if _, err = store.CreateServiceAccountAs(ctx, "test-admin", "seed-service", "Seed service", []string{"insight:publish"}, []string{"research-api"}, true); err != nil {

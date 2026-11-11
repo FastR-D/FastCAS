@@ -1,0 +1,187 @@
+{
+  "version": 1,
+  "issuer": "https://cas.example.test",
+  "jwks": {
+    "keys": [
+      {
+        "kty": "RSA",
+        "n": "wMHsI-CBClVDoEWGhcJc95gxiAjQDufLdCNUf-1sOlDwYroTJOFuv3n3j51Wq4RCLhU6CoP3VloohfG-FOqhURQXJPcXGXMf04mv7YfcY7KWznVGQd71Q5SL_Yg6hOai8mSDRHO9Yvllm1EDjfd_aCtbWeLpTwWvhextZ6IZyXKY1yn_MmepBMrWFLqgj2BL81Sbt4_DU_Ud5VCjK6FH3AhcKJ14KqJVPFYs2k7_14Lj60bxyPSkeTWU1uRFZVzX6x8Wo4pC2e5qk6djj1PCFTdBgsCUn-keGruGRCwiiCB51EvBXzCuoJkVRYuEGAdcMtyVcqKPrWr3O5CB1Nu0rQ",
+        "e": "AQAB",
+        "kid": "contract-fixture",
+        "alg": "RS256",
+        "use": "sig"
+      }
+    ]
+  },
+  "cases": [
+    {
+      "name": "user-access",
+      "token": "eyJhbGciOiJSUzI1NiIsImtpZCI6ImNvbnRyYWN0LWZpeHR1cmUiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2Nhcy5leGFtcGxlLnRlc3QiLCJzdWIiOiJmaXh0dXJlLXVzZXIiLCJhdWQiOlsicmVzb3VyY2UtYXBpIl0sImlhdCI6MTcwMDAwMDAwMCwiZXhwIjo0MTAyNDQ0ODAwLCJjbGllbnRfaWQiOiJmaXh0dXJlLWNsaWVudCIsInNjb3BlIjoicHJvZmlsZTpyZWFkIHByb2ZpbGU6d3JpdGUiLCJ0b2tlbl91c2UiOiJhY2Nlc3MifQ.qFbaKMsP0iX3O6q6EQH86VZrDq366pO2_geTvV1TYf_L0Y-vXTdQylxnkfv3cS6WMOjnJdPptZrN4dzKEGkMXqq80SKj5vG_P8p7rIWUKzdaI1FAHVy97huVnRdcOlvhODEt0LFsUep9M3XRLOq31cl1StMNX0In0ylFg220yp--utoZJZiNZxAyFm4m9CX-iRzp9VKX9D6tIQmWrsA4Y553eOT274BVvCattKXtYYnL4nibinP_HQHCxZD43UJi6cWkuCDOCto_FiBoBjAw2EGjyEdH4_x67-amFMM9f0aAGP0_wgCRDUsO0Xp9kW6JhvlNSwW4BTMF4lJ2QsE0hg",
+      "audience": "resource-api",
+      "scopes": [
+        "profile:read"
+      ],
+      "valid": true
+    },
+    {
+      "name": "service-access",
+      "token": "eyJhbGciOiJSUzI1NiIsImtpZCI6ImNvbnRyYWN0LWZpeHR1cmUiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2Nhcy5leGFtcGxlLnRlc3QiLCJzdWIiOiJmaXh0dXJlLWNsaWVudCIsImF1ZCI6WyJyZXNvdXJjZS1hcGkiXSwiaWF0IjoxNzAwMDAwMDAwLCJleHAiOjQxMDI0NDQ4MDAsImNsaWVudF9pZCI6ImZpeHR1cmUtY2xpZW50Iiwic2NvcGUiOiJwcm9maWxlOnJlYWQgcHJvZmlsZTp3cml0ZSIsInRva2VuX3VzZSI6ImFjY2VzcyIsInNlcnZpY2UiOnRydWV9.R3lb2CJ8ijQYpO0M95JtHvoB9CPYQqkwMYpRLOqX8-cZm-iJSgMdQa4xXimWwXkogtl2ipgg35HquYx8jwgAEquAcg0L1Dnl0ERQznrq70KDTReI3oWl_GqbtyJbAnZSzBk2ihT7cjddmxuzbVYGfo8JrZeJm14UQFC2oRbnqnmtMd1l7eWYG9y3L4twX7YnHVmaIi4jYQ2kcdi74E5-9zhjtIOLqYkiKApB1J-4uNMHy-cncS7MB3oqpKP11lkK25ul-SwpS1QuzlTcPb-ALD8sAOU0wRe0bbJqd7a_cw290RD8GS_Hq70YAdRNv7Q-p2nkp997cM_iZKdSv4-Nnw",
+      "audience": "resource-api",
+      "scopes": [
+        "profile:read"
+      ],
+      "valid": true
+    },
+    {
+      "name": "delegated-access",
+      "token": "eyJhbGciOiJSUzI1NiIsImtpZCI6ImNvbnRyYWN0LWZpeHR1cmUiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2Nhcy5leGFtcGxlLnRlc3QiLCJzdWIiOiJmaXh0dXJlLXVzZXIiLCJhdWQiOlsicmVzb3VyY2UtYXBpIl0sImlhdCI6MTcwMDAwMDAwMCwiZXhwIjo0MTAyNDQ0ODAwLCJjbGllbnRfaWQiOiJmaXh0dXJlLWNsaWVudCIsInNjb3BlIjoicHJvZmlsZTpyZWFkIHByb2ZpbGU6d3JpdGUiLCJ0b2tlbl91c2UiOiJhY2Nlc3MiLCJhY3QiOnsic3ViIjoiZml4dHVyZS1jYWxsZXIifSwiZGVsZWdhdGVkIjp0cnVlfQ.HaAw7kAy4fniWUtwBj5SMqHpufl34cV_ayXN5W7IqLS2JpGj491KdTiXDFpm-eVcU0nNrx1I60ygRYfhSSJ5w7Sl_1dZyBScls3lW72vENp1jxxeZkAR5i1PUfGY8AGLQ7uvldjIy5X1uCd0v3Ud8IadAFNZFnFf2CiHb44PKrhgXxgPv4pOGE8IAfJQ-_IzfrZHXTT4Odyf_8kmaOQVhN26PBRhSD6JVzxznGiZ0taOwgUUp6MeR2LCJVnN-Wh4gNx4eAhG7A72O8uGPJxcEGnhTrwMoR7w3rhv7ZFH230DQI1ot0rGtMtpFv5Lt1t1sMj477n_KaHFrOPngLp1Ow",
+      "audience": "resource-api",
+      "scopes": [
+        "profile:read"
+      ],
+      "valid": true
+    },
+    {
+      "name": "wrong-issuer",
+      "token": "eyJhbGciOiJSUzI1NiIsImtpZCI6ImNvbnRyYWN0LWZpeHR1cmUiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL3VuZXhwZWN0ZWQuZXhhbXBsZS50ZXN0Iiwic3ViIjoiZml4dHVyZS11c2VyIiwiYXVkIjpbInJlc291cmNlLWFwaSJdLCJpYXQiOjE3MDAwMDAwMDAsImV4cCI6NDEwMjQ0NDgwMCwiY2xpZW50X2lkIjoiZml4dHVyZS1jbGllbnQiLCJzY29wZSI6InByb2ZpbGU6cmVhZCBwcm9maWxlOndyaXRlIiwidG9rZW5fdXNlIjoiYWNjZXNzIn0.DRAiBacfv8h0s9xs1hr4Dm7lRxKh63seM_w-QbqvCyztmcAi-L65JVUimr1dyWrErASPz_JRCTSM4WXliJyzGJzNiCA25A5VgrtIILhaipQRcGI46vPwGn69wpgkw9fS_no7yOrZYqKJF3aSpGEDInMpud9Nzx-WP4DXYkVlMEcQJUeA9GRloGs04vAfdtTXfwzSkP_M8sM0EAqNFUuCpoWGTJPgIei9lN3RLiN0Bv9DCLyt2L1u7tXvvJ96igZkmbaqe3wsY0FJprvmTY8lbw5M1VWemThLMW2bvI7VDI_mBHArXifioHZTBsvSauCJ0l3n6cDkpUoM8xujkvqdIA",
+      "audience": "resource-api",
+      "scopes": [
+        "profile:read"
+      ],
+      "valid": false
+    },
+    {
+      "name": "wrong-audience",
+      "token": "eyJhbGciOiJSUzI1NiIsImtpZCI6ImNvbnRyYWN0LWZpeHR1cmUiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2Nhcy5leGFtcGxlLnRlc3QiLCJzdWIiOiJmaXh0dXJlLXVzZXIiLCJhdWQiOlsib3RoZXItcmVzb3VyY2UiXSwiaWF0IjoxNzAwMDAwMDAwLCJleHAiOjQxMDI0NDQ4MDAsImNsaWVudF9pZCI6ImZpeHR1cmUtY2xpZW50Iiwic2NvcGUiOiJwcm9maWxlOnJlYWQgcHJvZmlsZTp3cml0ZSIsInRva2VuX3VzZSI6ImFjY2VzcyJ9.SZOtTPZyTUdJ38gFPjLTeDhqfzi-s-z6eLYlpN8CpZ6rvl-X0jZ5-vsy0b-a-0lmF5-QD1zfGnSUmowfKHYWIS4pKifHKJYdxQbVF-GqqvQDJdACFcPdGjDzOLlH1s_snOeG3OezJ9TEy4p4IOgtAFztspy7CdMeUd4dar90hLfMUOs96N5mwQbvvthii2THaTnuB49MI0v9dQJHOAFQf-5XCFK73_bmiJD8Gpd_ZbEEmBHrAgHIjK8gM1jyPHA4l9ueALxztddHSI6pvZzD1TUCffWjd66h6YcSmlPJGDPOjFp5SCftMZfMxH5huWw344WESVIQWvatspON-gqXFQ",
+      "audience": "resource-api",
+      "scopes": [
+        "profile:read"
+      ],
+      "valid": false
+    },
+    {
+      "name": "expired",
+      "token": "eyJhbGciOiJSUzI1NiIsImtpZCI6ImNvbnRyYWN0LWZpeHR1cmUiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2Nhcy5leGFtcGxlLnRlc3QiLCJzdWIiOiJmaXh0dXJlLXVzZXIiLCJhdWQiOlsicmVzb3VyY2UtYXBpIl0sImlhdCI6MTcwMDAwMDAwMCwiZXhwIjoxNzAwMDAwMzAwLCJjbGllbnRfaWQiOiJmaXh0dXJlLWNsaWVudCIsInNjb3BlIjoicHJvZmlsZTpyZWFkIHByb2ZpbGU6d3JpdGUiLCJ0b2tlbl91c2UiOiJhY2Nlc3MifQ.SoBonuDVuxiBNhMBunkLem-6ydbSo3kFHf4XCd257qLcJ2EntSgtK_AxO-NoLIIVIhfmzxF3PmwHVMXuZm3xvp6NojQPGh1KxO6UHHxZl8ro0VokjlnGJk9Lq7vmSRUWqXW3dkvSIwBmQ-6aRetdMWhSg3dDjidy8PFZzFJ2UE3JdsvznSXIv06BYhyzVrees-y0nF-IKboUbcRjIO62VZVal8UYHKOquvGO96bvYo38ls63nYpMxJoAiwNPhOQGEqxc9xxur4U0xwgjq-HmcdffnvB20ngWyGvghl2jSjAwBVwvByigAxQne8Unnrhf_ky6j-1JYIu23fMIpQa-Wg",
+      "audience": "resource-api",
+      "scopes": [
+        "profile:read"
+      ],
+      "valid": false
+    },
+    {
+      "name": "future-not-before",
+      "token": "eyJhbGciOiJSUzI1NiIsImtpZCI6ImNvbnRyYWN0LWZpeHR1cmUiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2Nhcy5leGFtcGxlLnRlc3QiLCJzdWIiOiJmaXh0dXJlLXVzZXIiLCJhdWQiOlsicmVzb3VyY2UtYXBpIl0sImlhdCI6MTcwMDAwMDAwMCwiZXhwIjo0MTAyNDQ0ODAwLCJjbGllbnRfaWQiOiJmaXh0dXJlLWNsaWVudCIsInNjb3BlIjoicHJvZmlsZTpyZWFkIHByb2ZpbGU6d3JpdGUiLCJ0b2tlbl91c2UiOiJhY2Nlc3MiLCJuYmYiOjQxMDI0NDQ3MDB9.FQ74TBiYS7JnWg_jxEP2l40jMh3mc6JdOJSNixzNcnK1k1srF4gzivqARU88-JwmmIej_JH9_gfWPTcsRB80f8juBK8r9PP9HPSS70UV30SIY7xFm80l9N4qhOXjF_ZaZjfgA8oZxKVaG5H9I-YVP66gLygvBTPPZR6VENoOxolfvFdkov5mqQbEfHR8EFKANa8LFi80Xb7O75ZnrqzUZQpggNBPSyZQIWvRw1aOEcSGR4xHpW99IKTnhrcJ4NfEcG9EUfRKusGSClGhsb0ijU0lR2U-HL7iS69UfFlT-b0Si231YAxFY3MqKGgKpcbUc9tGKRzkrZiSuhwTppRX0Q",
+      "audience": "resource-api",
+      "scopes": [
+        "profile:read"
+      ],
+      "valid": false
+    },
+    {
+      "name": "future-issued-at",
+      "token": "eyJhbGciOiJSUzI1NiIsImtpZCI6ImNvbnRyYWN0LWZpeHR1cmUiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2Nhcy5leGFtcGxlLnRlc3QiLCJzdWIiOiJmaXh0dXJlLXVzZXIiLCJhdWQiOlsicmVzb3VyY2UtYXBpIl0sImlhdCI6NDEwMjQ0NDcwMCwiZXhwIjo0MTAyNDQ0ODAwLCJjbGllbnRfaWQiOiJmaXh0dXJlLWNsaWVudCIsInNjb3BlIjoicHJvZmlsZTpyZWFkIHByb2ZpbGU6d3JpdGUiLCJ0b2tlbl91c2UiOiJhY2Nlc3MifQ.CJVV9k35Ql4-feE9ZqOHMbwYTqw1G0kzBp961wXkWjR17Jnb4aormAdBdf3AFvUT1aTdFaEWjYkr76F1e8WjyQ5xs0vS-HJlQ23-dBFjT8YNnMkJNcPwNAReR4avpu_VtGGGGiYudqzKkWSkXPOL3lw4cIaIrtvpxfmW1eqH8HY3T3B9Z4Or-0nOdx_tIzKnN-RJPr5hfDakPtg7WTFxWY0G0IvzjhGUTMDMI_Ll8eD-cGdwQef8yE9hRHkKRUCgmisZTFOW2Ej-Y8W4tp_ZLh6V5sQBHU7SSCwud1BO0DZM8QyrgYD0AqZX-36SdAcCR6PN7RWNZtFN5yoGPMba-Q",
+      "audience": "resource-api",
+      "scopes": [
+        "profile:read"
+      ],
+      "valid": false
+    },
+    {
+      "name": "id-token-as-access",
+      "token": "eyJhbGciOiJSUzI1NiIsImtpZCI6ImNvbnRyYWN0LWZpeHR1cmUiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2Nhcy5leGFtcGxlLnRlc3QiLCJzdWIiOiJmaXh0dXJlLXVzZXIiLCJhdWQiOlsicmVzb3VyY2UtYXBpIl0sImlhdCI6MTcwMDAwMDAwMCwiZXhwIjo0MTAyNDQ0ODAwLCJjbGllbnRfaWQiOiJmaXh0dXJlLWNsaWVudCIsInNjb3BlIjoicHJvZmlsZTpyZWFkIHByb2ZpbGU6d3JpdGUiLCJ0b2tlbl91c2UiOiJpZCJ9.LprqKxWbKtgMQRmoNWo1IkSh6U-CRTvEPXrKsS6sObkUxZy1mGyIjmZrlVvoN05OR5cnVXEp2Z8XI1iXL5WU8k1x0JAXqHMy6fByXAVM307RWOQkp5-Ds3WkM__2KpGb3_9wuTHeSIG7hotHr4fuMtUFDmEKeveRDrWauOvu3GAsAJ8cvuv6IkXF7nxm3Mywv6MhdFvuJz6MGfRDVa3Mze_9cYgOo-_YJRRYkeNP5PxWfYBtVEfycFSQtgVSiu7h6Q5IvGfNRhrsOt3faakm_lwe_k9ZLRHlI3WEXs5Ckx4gTwG4mHRU29n8i8o4FCy5rd8cc6OKnf2C9Yhhnh9YrA",
+      "audience": "resource-api",
+      "scopes": [
+        "profile:read"
+      ],
+      "valid": false
+    },
+    {
+      "name": "missing-expiry",
+      "token": "eyJhbGciOiJSUzI1NiIsImtpZCI6ImNvbnRyYWN0LWZpeHR1cmUiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2Nhcy5leGFtcGxlLnRlc3QiLCJzdWIiOiJmaXh0dXJlLXVzZXIiLCJhdWQiOlsicmVzb3VyY2UtYXBpIl0sImlhdCI6MTcwMDAwMDAwMCwiY2xpZW50X2lkIjoiZml4dHVyZS1jbGllbnQiLCJzY29wZSI6InByb2ZpbGU6cmVhZCBwcm9maWxlOndyaXRlIiwidG9rZW5fdXNlIjoiYWNjZXNzIn0.l3KtPbcKevhdo0VR_Ts_OEsf5nouLwndOxyBwRyGPq-Px5T_M3I3hfeZppLL3szZ2-5X2-JegDAEYsmDeX6b1Fpa_NbXOUkhvsy_RKBa19IQcpDXsimH88_7a1mYNO54qCUv8QI6S7dnZg3r8GITv5yHTwaXKnFj-mWDFaUH0XeIMJaaQSXkRtSO_HialSJFBHEf65N7X03Bj49B2MaDMFHluJbHPz0Zd2CW2D6OqUm5gR_y51R9Jk5_OHOBW5lSw4rnNXydk_Nc9rMnPBUlghPwBRZsh5aFLLzfzF9CU2CE-vdbCT29kbuFBtgt3EW2RfHkckNYIwcNDJAVYvyU3Q",
+      "audience": "resource-api",
+      "scopes": [
+        "profile:read"
+      ],
+      "valid": false
+    },
+    {
+      "name": "missing-issued-at",
+      "token": "eyJhbGciOiJSUzI1NiIsImtpZCI6ImNvbnRyYWN0LWZpeHR1cmUiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2Nhcy5leGFtcGxlLnRlc3QiLCJzdWIiOiJmaXh0dXJlLXVzZXIiLCJhdWQiOlsicmVzb3VyY2UtYXBpIl0sImV4cCI6NDEwMjQ0NDgwMCwiY2xpZW50X2lkIjoiZml4dHVyZS1jbGllbnQiLCJzY29wZSI6InByb2ZpbGU6cmVhZCBwcm9maWxlOndyaXRlIiwidG9rZW5fdXNlIjoiYWNjZXNzIn0.MLzWPQ4T8BoP1-NkaBe3_cnzd3XaPQs_Diqz4wiU5eW6d81JDp7T3pNM0wPaYJbdk4wjtdzRl0mihQE_a-MQPRZIbBx08rGmSbkzc8ybLlROyA3CtAOzhldewD2fNM_q9B070rzeZgvRagibJ-1K8djgJG5HdPADjD_Ew0BoDQ0sv_CBJi5g0WvIOOtQ2KMMuOsAchb3vESDvBoANB_GralKlSDHIBGPt8RtyjKnqvs-BkLJtkqcJe8H7pBvsea8PI62vy91z1UMCtaLsmSYhMrDBt-lCvfZHFcGJyhzp871VqmU1vqrjVxuS4PTgrqIZO718Jt1TG6bdsacOMnP5g",
+      "audience": "resource-api",
+      "scopes": [
+        "profile:read"
+      ],
+      "valid": false
+    },
+    {
+      "name": "missing-subject",
+      "token": "eyJhbGciOiJSUzI1NiIsImtpZCI6ImNvbnRyYWN0LWZpeHR1cmUiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2Nhcy5leGFtcGxlLnRlc3QiLCJhdWQiOlsicmVzb3VyY2UtYXBpIl0sImlhdCI6MTcwMDAwMDAwMCwiZXhwIjo0MTAyNDQ0ODAwLCJjbGllbnRfaWQiOiJmaXh0dXJlLWNsaWVudCIsInNjb3BlIjoicHJvZmlsZTpyZWFkIHByb2ZpbGU6d3JpdGUiLCJ0b2tlbl91c2UiOiJhY2Nlc3MifQ.szDNmPZ3tTOIceojQNHE7MGNRBDCAd-0fUwzDGR72pwlgLy5HKVXYst5I94oDBQHMBdvjfCR-lLyYqwd9BB_R5K6fVjP7KelJ3j7chV-lyBZHcyzqFRWB7PQ_W6dILRMf6O-yxSrxUF-Fm8QhMzPpg5Ef_avuucu1lwW_Rs0eZ4wEmTwJ3hmllnvDMTviPcMYUBtqFN-Nnoy5xwMLF9uY04tgnentVWx-LVWfRl0uVBXS8J9XGmWBAOwBZsTDC8-Dht__15FMFMJ_rZ8SSWIiem6uzxsOcsf8oAG-JCiYsMg92wY2Qt51qh2i2ywzIkgqalUaXqYSCIjD3y1pnZOjg",
+      "audience": "resource-api",
+      "scopes": [
+        "profile:read"
+      ],
+      "valid": false
+    },
+    {
+      "name": "empty-subject",
+      "token": "eyJhbGciOiJSUzI1NiIsImtpZCI6ImNvbnRyYWN0LWZpeHR1cmUiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2Nhcy5leGFtcGxlLnRlc3QiLCJzdWIiOiIiLCJhdWQiOlsicmVzb3VyY2UtYXBpIl0sImlhdCI6MTcwMDAwMDAwMCwiZXhwIjo0MTAyNDQ0ODAwLCJjbGllbnRfaWQiOiJmaXh0dXJlLWNsaWVudCIsInNjb3BlIjoicHJvZmlsZTpyZWFkIHByb2ZpbGU6d3JpdGUiLCJ0b2tlbl91c2UiOiJhY2Nlc3MifQ.JVbikSG6M7PqbdRgSuXKUyHRBOvxNAgsJeZWDJj43v2bz8sQOhIZ9Oh8s9JlFV6-xnkE2bio1irG1hjst9Z4BaVrw2W8gFlSAn3zKG7nxwoQwXuK8barVOJZz031J9yr-R2cw4bJ3BWmElo1IOM5Zz_CJQSN6kVnblGEewk_N-QV7snyLfXb6xAOQU77ThZN06tBhpETqz8iWDGalwAiclrmwsEB8SwLctFLWr4XFMicSud2uwJ5gPRTGzEsQp-a9bUvAZtDlwtJbJpQ8GNPfR-pwKwgxDoD8MV5kIbDAeETQEEe3a10nFWMBX9LGGTo5-2ddFBk042VE3okhe4fVQ",
+      "audience": "resource-api",
+      "scopes": [
+        "profile:read"
+      ],
+      "valid": false
+    },
+    {
+      "name": "missing-scope",
+      "token": "eyJhbGciOiJSUzI1NiIsImtpZCI6ImNvbnRyYWN0LWZpeHR1cmUiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2Nhcy5leGFtcGxlLnRlc3QiLCJzdWIiOiJmaXh0dXJlLXVzZXIiLCJhdWQiOlsicmVzb3VyY2UtYXBpIl0sImlhdCI6MTcwMDAwMDAwMCwiZXhwIjo0MTAyNDQ0ODAwLCJjbGllbnRfaWQiOiJmaXh0dXJlLWNsaWVudCIsInRva2VuX3VzZSI6ImFjY2VzcyJ9.qgwySeP0mlJ0kDyU5sj8zD7SlTJbysc3ghi0bbtGBUezzegB4L9vMZMStoPQ_RrAuKyfcct7sS_1-b8KoDG-C07va6Mz9QHxxqHL-QIoYjDZlqLW0B6ibTrRaFv6ecq3QSgnsOwMhN1UjRxD3YYcYjqMSBtOlGltFjMZn4hA85p_tpzAAJvIkE8w-eiaXwpE7kaZyn7YADqUNvl0rl9BUIKK3kJW8NEL-I2iunptF5l1ShLRBwavw1Kd6C7aojp_BP9wSINHrgcscLm7Q0wwrSZGnmP-_-BN5l8WWCfIshKyWSvLKmntduNR0r3d3T_jKWDzBJZFFhLrH4-E_ApWQg",
+      "audience": "resource-api",
+      "scopes": [],
+      "valid": false
+    },
+    {
+      "name": "array-scope",
+      "token": "eyJhbGciOiJSUzI1NiIsImtpZCI6ImNvbnRyYWN0LWZpeHR1cmUiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2Nhcy5leGFtcGxlLnRlc3QiLCJzdWIiOiJmaXh0dXJlLXVzZXIiLCJhdWQiOlsicmVzb3VyY2UtYXBpIl0sImlhdCI6MTcwMDAwMDAwMCwiZXhwIjo0MTAyNDQ0ODAwLCJjbGllbnRfaWQiOiJmaXh0dXJlLWNsaWVudCIsInNjb3BlIjpbInByb2ZpbGU6cmVhZCJdLCJ0b2tlbl91c2UiOiJhY2Nlc3MifQ.OQSx4F0bc_IgXGUJzbfaUqTKGbOo8MmgEJWkK6tk0zgE5L2l2A65WBA2b06LLa1oD7pwf9P1IObDaRgSZeRMoVWvhCldSczVQQ0FUJtoDewSBouFBlztNMDrZv6JIS3bKYZbeU4IJA7MIRZS75awZ5YpKeRZNpVZQNrSUssRPXwj93r0wfP3GF3RWDGD2uUwhmy1qhYYJT16ylc9Kidptvqee3ODG6ItcSzdnB239Fmm8zVOgcWuoOX6SKIUMykNfNNXpne0j_LuPpQeedNoUQTvb2IAPeggGOgYYTxVZkM8uVny1oN0iFakJsx7YuepNvkjJIfVl_4BrFSKLB1kUg",
+      "audience": "resource-api",
+      "scopes": [
+        "profile:read"
+      ],
+      "valid": false
+    },
+    {
+      "name": "insufficient-scope",
+      "token": "eyJhbGciOiJSUzI1NiIsImtpZCI6ImNvbnRyYWN0LWZpeHR1cmUiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2Nhcy5leGFtcGxlLnRlc3QiLCJzdWIiOiJmaXh0dXJlLXVzZXIiLCJhdWQiOlsicmVzb3VyY2UtYXBpIl0sImlhdCI6MTcwMDAwMDAwMCwiZXhwIjo0MTAyNDQ0ODAwLCJjbGllbnRfaWQiOiJmaXh0dXJlLWNsaWVudCIsInNjb3BlIjoicHJvZmlsZTp3cml0ZSIsInRva2VuX3VzZSI6ImFjY2VzcyJ9.FZQqJasX5xVhQtVt07NDuDvOcaY2vxnOB14rzyWRepJGo_aImyJMpL9iuDO2OcOybdPLi4D8yWoZu8-c68aN60Fz7cmUK2vNL9snvZw84qNkQ-94IHHl0Z_-lSDgHWXefilWg_T2vko4DMPEuACzkhccRMx3GS0Z4PKAJ9hUxC-E9cFFnFgFVecXFnv_DoL3BNqE-0QMCsLmyt2gSz0ppGcjM811-a2uXZ17s-UyZLOKgILEo6A2Ac01nFJrixOjxYIEcCz32Acb3xiqLmkN1OeDsoniiDi1KX8XRqhiyitHPQ_8XEYGH56A2jUvkGvJblG9H4_ITbkY6mU7TirMvA",
+      "audience": "resource-api",
+      "scopes": [
+        "profile:read"
+      ],
+      "valid": false
+    },
+    {
+      "name": "invalid-signature",
+      "token": "eyJhbGciOiJSUzI1NiIsImtpZCI6ImNvbnRyYWN0LWZpeHR1cmUiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2Nhcy5leGFtcGxlLnRlc3QiLCJzdWIiOiJmaXh0dXJlLXVzZXIiLCJhdWQiOlsicmVzb3VyY2UtYXBpIl0sImlhdCI6MTcwMDAwMDAwMCwiZXhwIjo0MTAyNDQ0ODAwLCJjbGllbnRfaWQiOiJmaXh0dXJlLWNsaWVudCIsInNjb3BlIjoicHJvZmlsZTpyZWFkIHByb2ZpbGU6d3JpdGUiLCJ0b2tlbl91c2UiOiJhY2Nlc3MifQ.nEZ_IIXxEr2i0GLege87E-3TbdMGhed6a7zjPtMkNNUGEcK-8FQ98UfMPKohICCF4WmXtzBo9e7KH5sdeiErl61EGkscR127sLlSX6V18Z4b0U1EL4oISyK71C-GBQz-5UdQcTLlQ7qpb4ZxQZ8y7pvUvo7zDPirdzUQudmyUMQSVg1RoP8aEnb7M9oFpJndFG9bvoEq-7vfnEEr06Nc9NXGp2iJAmT_3aOGcR0R9CV8I10JqcYY4VyplT710p3eX96y8oMFFoI3anK3rqEP6nUG5bbtI-HyRHDyeuuI_xWH_A5yibz7pdvLpTYj4LNuhofSI11Y44CiPKKf_pc6qQ",
+      "audience": "resource-api",
+      "scopes": [
+        "profile:read"
+      ],
+      "valid": false
+    },
+    {
+      "name": "unknown-key",
+      "token": "eyJhbGciOiJSUzI1NiIsImtpZCI6InVucmVnaXN0ZXJlZC1rZXkiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2Nhcy5leGFtcGxlLnRlc3QiLCJzdWIiOiJmaXh0dXJlLXVzZXIiLCJhdWQiOlsicmVzb3VyY2UtYXBpIl0sImlhdCI6MTcwMDAwMDAwMCwiZXhwIjo0MTAyNDQ0ODAwLCJjbGllbnRfaWQiOiJmaXh0dXJlLWNsaWVudCIsInNjb3BlIjoicHJvZmlsZTpyZWFkIHByb2ZpbGU6d3JpdGUiLCJ0b2tlbl91c2UiOiJhY2Nlc3MifQ.fY9FmVM3aYZ2x_ZGXoOrHvcErxbdCe6Lb3JmXd8VPiE5Op5eODiwqUT6neur4WLvDYynKOmiOt2ntEnjOJsXlvWHL4S9r8MU9f3GBU3NYX1j0VgHwJ38yy9VSP6zHC_bZL-VTRcr_0O0WdS9INGfK0eDut55pdITqJQ2qReAR3-xKlefnDZeiRwoChkE-AOjC0DDcrLuYR3hrG_yFoTOwIOhaYvCsYxk1ksTuircmE9VunKwwJ139ASzYGgdUeIoMTF0S6rET6O5fq-aMmNPe3tOhnefCVMdGZJEHvzSR5iUcSrVfefMupC3BBDNxxzoPTvCvPfLDv4q6NPdAJR8bA",
+      "audience": "resource-api",
+      "scopes": [
+        "profile:read"
+      ],
+      "valid": false
+    },
+    {
+      "name": "symmetric-algorithm",
+      "token": "eyJhbGciOiJIUzI1NiIsImtpZCI6ImNvbnRyYWN0LWZpeHR1cmUiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2Nhcy5leGFtcGxlLnRlc3QiLCJzdWIiOiJmaXh0dXJlLXVzZXIiLCJhdWQiOlsicmVzb3VyY2UtYXBpIl0sImlhdCI6MTcwMDAwMDAwMCwiZXhwIjo0MTAyNDQ0ODAwLCJjbGllbnRfaWQiOiJmaXh0dXJlLWNsaWVudCIsInNjb3BlIjoicHJvZmlsZTpyZWFkIHByb2ZpbGU6d3JpdGUiLCJ0b2tlbl91c2UiOiJhY2Nlc3MifQ.C6ZmkqLwu4JW8Y0VO27RKDz8LDoaQwHwtJZHzmUVJ-s",
+      "audience": "resource-api",
+      "scopes": [
+        "profile:read"
+      ],
+      "valid": false
+    }
+  ]
+}

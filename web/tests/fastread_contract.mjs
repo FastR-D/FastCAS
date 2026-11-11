@@ -7,7 +7,7 @@ const browser=await chromium.launch({executablePath:process.env.CHROME_BIN||'/us
 const first=await browser.newContext({viewport:{width:1440,height:900}});
 const page=await first.newPage();
 page.setDefaultTimeout(10000);
-const account=target=>target.getByRole('button',{name:'alice@example.test',exact:true});
+const account=target=>target.getByRole('button',{name:'账号设置',exact:true});
 async function authorize(target){
  await target.locator('input[name=email]').fill('alice@example.test');
  await target.locator('input[name=password]').fill('correct horse battery staple');

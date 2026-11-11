@@ -5,7 +5,6 @@ import (
 	"crypto/sha256"
 	"crypto/subtle"
 	"encoding/base64"
-	"html/template"
 	"net/http"
 	"regexp"
 	"strings"
@@ -30,7 +29,11 @@ func (s *Server) deviceFormProof(csrf, code string) string {
 	return base64.RawURLEncoding.EncodeToString(mac.Sum(nil))
 }
 
-var deviceTemplate = template.Must(template.New("device").Parse(`<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>确认设备 · FastCAS</title><main><h1>确认设备</h1>{{if .User}}<p>当前 FastCAS 身份：{{.User.Name}}</p>{{if .Request}}<p>应用：{{.Request.ClientName}}</p><p>权限：{{range .Request.Scopes}}{{.}} {{end}}</p><p>请核对设备屏幕上的代码 <strong>{{.Code}}</strong>，仅在您正主动配对自己的设备时继续。</p><form method="post" action="/device"><input type="hidden" name="csrf" value="{{.CSRF}}"><input type="hidden" name="user_code" value="{{.Code}}"><button name="decision" value="approve">允许这台设备</button><button name="decision" value="deny">拒绝</button></form>{{else}}<form method="get" action="/device"><label>设备代码 <input name="user_code" required maxlength="9" autocomplete="off"></label><button>检查</button></form>{{end}}{{else}}<p>请先登录 FastCAS，然后返回此页输入设备上的代码。</p><a href="/login{{if .Code}}?return_device={{.Code}}{{end}}">登录</a>{{end}}</main></html>`))
+var deviceTemplate = authTemplate("device", `<!doctype html><html lang="zh-CN"><head>{{template "auth-head" .}}</head><body><main>{{template "auth-toolbar" .}}<h1>确认设备</h1>
+{{if .User}}<p>当前 FastCAS 身份：{{.User.Name}}</p>{{if .Request}}<p>应用：{{.Request.ClientName}}</p><p>权限：{{range .Request.Scopes}}{{.}} {{end}}</p><p>请核对设备屏幕上的代码 <strong class="auth-code">{{.Code}}</strong>，仅在您正主动配对自己的设备时继续。</p>
+<form method="post" action="/device"><input type="hidden" name="csrf" value="{{.CSRF}}"><input type="hidden" name="user_code" value="{{.Code}}"><button class="fastui-button fastui-button--primary" name="decision" value="approve">允许这台设备</button><button class="fastui-button" name="decision" value="deny">拒绝</button></form>
+{{else}}<form method="get" action="/device"><label>设备代码 <input class="fastui-input" name="user_code" required maxlength="9" autocomplete="off"></label><button class="fastui-button fastui-button--primary">检查</button></form>{{end}}
+{{else}}<p>请先登录 FastCAS，然后返回此页输入设备上的代码。</p><a href="/login{{if .Code}}?return_device={{.Code}}{{end}}">登录</a>{{end}}{{template "auth-footer" .}}</main></body></html>`)
 
 func (s *Server) devicePage(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Referrer-Policy", "same-origin")
@@ -40,7 +43,7 @@ func (s *Server) devicePage(w http.ResponseWriter, r *http.Request) {
 	if err == nil {
 		user, _ = s.Store.Identity(r.Context(), session.IdentityID)
 	}
-	data := map[string]any{"Code": code, "User": user}
+	data := map[string]any{"Title": "确认设备", "Assets": s.authAssets, "Code": code, "User": user}
 	if user != nil && code != "" {
 		allowed, err := s.Store.Allow(r.Context(), "device-verify:"+s.peer(r), 20, 15*time.Minute)
 		if err != nil || !allowed {
@@ -88,5 +91,5 @@ func (s *Server) deviceConfirm(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	_, _ = w.Write([]byte("<!doctype html><html lang=zh-CN><meta charset=utf-8><title>设备确认完成</title><p>设备请求已处理，可返回设备继续操作。</p></html>"))
+	_ = deviceCompleteTemplate.Execute(w, map[string]any{"Title": "设备确认完成", "Assets": s.authAssets})
 }

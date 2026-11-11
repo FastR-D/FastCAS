@@ -1,7 +1,6 @@
 package httpapi_test
 
 import (
-	"bytes"
 	"context"
 	"net"
 	"os"
@@ -49,7 +48,7 @@ func TestFastNewsIdentityStatusAgainstProvider(t *testing.T) {
 	cmd := exec.CommandContext(ctx, python, "tests/fastcas_contract.py")
 	cmd.Dir = filepath.Join(root, "FastNews")
 	cmd.Env = append(os.Environ(), "PYTHONPATH="+filepath.Join(root, "FastNews"), "FASTCAS_CONTRACT_ISSUER="+b.issuer, "FASTCAS_CONTRACT_NEWS_ORIGIN="+origin, "FASTCAS_CONTRACT_STATUS_SIGNAL="+signal)
-	var output bytes.Buffer
+	var output processLog
 	cmd.Stdout = &output
 	cmd.Stderr = &output
 	if err = cmd.Start(); err != nil {

@@ -1,7 +1,6 @@
 package httpapi_test
 
 import (
-	"bytes"
 	"context"
 	"net"
 	"net/http"
@@ -41,7 +40,7 @@ func TestFastResearchAgainstRealBrowser(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
 	defer cancel()
 	server := exec.CommandContext(ctx, "node", filepath.Join(research, "server", "index.mjs"))
-	var serverLog bytes.Buffer
+	var serverLog processLog
 	server.Stdout = &serverLog
 	server.Stderr = &serverLog
 	server.Dir = directory

@@ -16,7 +16,7 @@ async function signInAtCAS(target){
  await target.getByRole('button',{name:'确认并继续'}).click();
 }
 async function openAccount(target){
- await target.locator('mdui-navigation-rail-item[value="account"]').click();
+ await target.getByRole('button',{name:'账号认证',exact:true}).click();
  await target.getByRole('heading',{name:'账号认证'}).waitFor();
 }
 async function fillMDUI(target,label,value){
@@ -38,7 +38,7 @@ try{
  await fillMDUI(page,'确认本地 FastTask 密码','password-for-tests');
  await page.getByText('认证当前账号',{exact:true}).click();
  await signInAtCAS(page);
- await page.locator('mdui-navigation-rail-item[value="account"]').waitFor();
+ await page.getByRole('button',{name:'账号认证',exact:true}).waitFor();
  await openAccount(page);
  await page.getByText('已完成 FastCAS 认证').waitFor();
 

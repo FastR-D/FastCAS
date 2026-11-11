@@ -1,17 +1,36 @@
 # FastCAS 账号与管理控制台
 
-使用 React 19、TypeScript 与 Vite。`pnpm install --frozen-lockfile && pnpm run build` 生成 `dist/`；启动 Go 服务时设置 `FASTCAS_UI_DIR=/absolute/path/to/FastCAS/web/dist`，同源提供 `/console/`。未设置时原有 OIDC/JSON API 行为不变。浏览器入口 `/login` 登录成功后返回控制台；OIDC 授权请求仍走原回调。
+React 19、TypeScript、Vite；使用 npm 正式包 `@fastrd/ui-react@0.1.2` 和 `@fastrd/ui-foundation@0.1.2`，版本与完整性由 `pnpm-lock.yaml` 固定。共享控件、反馈、对话框及颜色令牌来自 FastUI，应用布局与身份业务留在 FastCAS。界面与验收面向桌面管理场景。
 
-目前页面包括个人身份复核、认证器 TOTP 开通、项目绑定查看/解除、会话查看/退出；管理员页面包括身份状态、一次性邀请/恢复凭证、应用登记、审计列表和死信重试。管理员 API 要求近期 MFA；页面只展示一次性凭证和客户端密钥，不写入浏览器持久存储。解除关联及改动身份需要再次确认。列表目前读取 API 前 100 项，尚未做完整分页及服务身份维护。
+```sh
+pnpm install --frozen-lockfile
+pnpm run build
+```
 
-本地开发：`pnpm run dev -- --port 4173`，Vite 代理 `/api` 与 `/login` 到 `127.0.0.1:8900`；Go 服务需另行启动。邀请注册与密码恢复已提供公开表单：`/console/?flow=invite` 或 `/console/?flow=recovery`。一次性凭证可手工输入，或作为 `token` 查询参数传入；页面初始化会立即清除地址栏查询参数，提交成功后提示用户独立登录。表单仅调用同源 `/api/v1/register`、`/api/v1/recover`，不会自动创建项目账号。生产前需补齐服务身份、跨项目全局退出、管理员/MFA 浏览器验收及可复现部署。
+构建生成 React 控制台和原生认证页使用的独立入口。设置 `FASTCAS_UI_DIR=/absolute/path/to/FastCAS/web/dist` 后，由 Go 同源提供 `/console/`，登录后返回控制台；OIDC 请求继续使用原授权回调。部署时必须复制整个 `dist/`，包括 `.vite/manifest.json` 和所有 `assets/`。服务启动时验证认证入口及其依赖，缺少产物会报错并要求重新构建。manifest 不向浏览器开放。Docker 和本地发布脚本已复制整个目录。
 
-验证：`pnpm run build` 完成类型检查和打包；Go `TestConsoleRoutingAndSecurityHeaders` 验证静态路由隔离与浏览器安全头。Chrome 对未登录和模拟管理员页面完成 1440px/390px 布局检查，均无横向溢出；模拟响应不能作为实际权限流程通过的证据。
+未设置 `FASTCAS_UI_DIR` 时，原生登录、同意与设备确认仍可使用，React 控制台不挂载。已启用控制台时，这些原生页面也使用同版本 npm 包构建的样式与主题；登录和设备确认继续由服务端处理，表单不依赖 JavaScript，Origin/CSRF 与授权状态检查保持在服务端。
 
-邀请/恢复验证：真实 Go/PostgreSQL HTTP 契约 `TestInviteAndRecoveryHTTPKeepAccountAndInvalidateSession` 通过，覆盖邀请单次消费、恢复保持身份 ID、旧会话失效、旧密码失败与新密码登录。Chrome 模拟 API 的邀请/恢复页面检查确认查询凭证清除、提交一次和成功提示；邀请页 1440px/390px 无横向溢出。浏览器端模拟检查用于布局；真实页面到服务的联调由下述 Chrome 契约覆盖。
+个人页面包括身份复核、MFA 开通与恢复码轮换、自助改密、项目关联、设备安装、跨项目委托和会话撤销。管理页面包括身份状态、邀请/密码恢复/MFA 重置、应用、服务身份、调用策略、接入指引、审计和失败投递。身份、应用、服务身份、审计及设备列表支持服务端分页。管理员 API 要求近期 MFA；高风险操作使用 FastUI 原生模态对话框确认。应用权限和通知地址通过可校验表单编辑，失败时保留输入并在对话框内显示错误。
 
-真实浏览器闭环：先 `pnpm install --frozen-lockfile && pnpm run build`，再在 FastCAS 根目录运行 `FASTCAS_BROWSER_CONTRACT=1 go test ./internal/httpapi -run '^TestConsoleAgainstRealBrowser$' -count=1 -v`。测试使用隔离 PostgreSQL schema、真实 Go HTTP 服务器、`web/dist` 和 Chrome（可用 `CHROME_BIN` 指定），验证邀请注册、登录进入原身份、会话页、退出、恢复、旧密码拒绝与新密码登录。浏览器视口为 390px；页面无横向溢出。测试生成的数据和一次性凭证均为隔离测试数据。
+审计支持操作名称、执行者 ID、目标 ID 的精确匹配和开始/结束时间组合筛选；分页保留已应用条件，重置与刷新从首屏重新查询。输入时间使用浏览器时区，发送时转为 UTC；开始时间包含、结束时间排除。后台迁移 `015_audit_filters.sql` 为检索与分页增加索引。
 
-联调发现登录页的 `Referrer-Policy: no-referrer` 导致 Chromium 原生表单发送 `Origin: null`，与服务端严格同源检查冲突。登录页现在使用 `same-origin`，避免外站收到授权参数，同时保留 Origin/CSRF 拒绝跨站提交。已有跨站登录回归和真实浏览器契约均通过。
+主题支持浅色、深色和跟随系统，使用 foundation 的颜色模式控制器；仅 `fastcas.color-mode` 偏好写入 localStorage。一次性凭证、客户端密钥、恢复码和认证器密钥只保存在当前页面内存中；离开对应页面会卸载组件并清空显示，管理页之间不会复用密钥。查询参数中的邀请/恢复凭证在 React 发出请求前从地址栏清除。凭证须通过可信渠道私密交付。
 
-应用密钥轮换：管理员完成近期 MFA 后可在“应用管理”选择保密客户端轮换。新密钥只显示一次；旧密钥默认保留 10 分钟，便于项目实例切换，最长可经 API 指定 1 小时。`POST /api/v1/admin/applications/{id}/rotate-secret` 接受可选 `{"grace_seconds": 0..3600}`，0 表示立即失效；未提供时默认 600。连续轮换只保留最近上一把密钥。公开客户端不可轮换。更新与审计在同一事务提交。项目需在交接窗口内更新保密配置，浏览器页面不持久化密钥。
+公开表单入口为 `/console/?flow=invite`、`?flow=recovery`、`?flow=mfa_reset`，支持手动凭证或 `token` 查询参数。切换流程清空原凭证与密码。成功后提示独立登录，各项目账号不会自动创建或合并。
+
+本地开发：`pnpm run dev -- --port 4173`。Vite 将 `/api`、`/login`、`/device` 与 discovery 代理到 `127.0.0.1:8900`。原生认证页的完整样式与主题联调应使用生产构建和 `FASTCAS_UI_DIR`。
+
+真实浏览器验证在仓库根目录执行，需要独立 PostgreSQL 测试库和 Chrome（可用 `CHROME_BIN` 指定）：
+
+```sh
+FASTCAS_TEST_DATABASE_URL='postgres://.../fastcas_test?sslmode=disable' \
+FASTCAS_BROWSER_CONTRACT=1 \
+go test ./internal/httpapi -run '^TestConsoleAgainstRealBrowser$' -count=1 -v
+```
+
+该契约使用隔离 schema、真实 HTTP 和构建产物，覆盖注册、登录、改密、恢复、MFA、分页、审计筛选、应用配置保存/失败重试/取消、焦点恢复、密钥轮换与清除、服务生命周期和设备确认。也验证禁用 JavaScript 时的原生登录、桌面深浅主题和主题持久化；截图保存在 `.local/ui-verification/`，只含隔离测试数据。`TestAuditFiltersAndPagination` 验证服务端时间边界、组合筛选、分页、非法条件与权限；`TestConsoleAuthManifestValidation` 验证产物完整性与路径约束。
+
+这轮完成控制台基础重构与审计检索，不代表全部商业化规划完成。真实域名部署、监控告警、备份恢复和跨项目容量/SLO 验收仍需按项目交付清单推进。
+
+图标使用锁定版本的 `lucide-react@1.72.0`，由 `Icon.tsx` 统一 16px 操作图标、1.75px 描边和 `currentColor`，18px 标题图标及品牌盾牌沿用同一图形语言。图标随浅深主题、选中与禁用状态继承颜色；带文字的装饰图标使用 `aria-hidden`，保留控件原有可访问名称。

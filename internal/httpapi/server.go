@@ -4,7 +4,6 @@ import (
 	"crypto/subtle"
 	"encoding/json"
 	"errors"
-	"html/template"
 	"io"
 	"net"
 	"net/http"
@@ -28,6 +27,7 @@ type Server struct {
 	ConsoleEnabled bool
 	ProxySecret    string
 	handler        http.Handler
+	authAssets     authAssets
 }
 
 func New(store *core.Store, issuer string, dev bool) (*Server, error) {
@@ -91,7 +91,9 @@ func (s *Server) boundary(next http.Handler) http.Handler {
 		w.Header().Set("Referrer-Policy", "no-referrer")
 		w.Header().Set("X-Frame-Options", "DENY")
 		w.Header().Set("Content-Security-Policy", "default-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'")
-		w.Header().Set("X-Request-ID", core.RandomToken())
+		requestID := core.RandomToken()
+		w.Header().Set("X-Request-ID", requestID)
+		r = r.WithContext(core.WithAuditRequestID(r.Context(), requestID))
 		// Issuer and cookie security never depend on client-supplied forwarding headers.
 		r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 		next.ServeHTTP(w, r)
@@ -109,12 +111,17 @@ func failure(w http.ResponseWriter, err error) {
 		status, code, message = 401, "authentication_required", "Please sign in again"
 	case errors.Is(err, core.ErrForbidden):
 		status, code, message = 403, "forbidden", "Operation not permitted"
+	case errors.Is(err, core.ErrPrecondition):
+		status, code, message = 412, "version_changed", "The account link changed; reload its current version"
 	case errors.Is(err, core.ErrConflict):
 		status, code, message = 409, "conflict", "Account link conflicts with an existing relationship"
 	case errors.Is(err, core.ErrExpired):
 		status, code, message = 400, "expired", "Request expired or was already consumed"
 	}
-	send(w, status, map[string]any{"code": code, "message": message, "request_id": w.Header().Get("X-Request-ID"), "retryable": status >= 500})
+	problem(w, status, code, message)
+}
+func problem(w http.ResponseWriter, status int, code, message string) {
+	send(w, status, map[string]any{"code": code, "message": message, "request_id": w.Header().Get("X-Request-ID"), "retryable": status >= 500 || status == 429})
 }
 func decode(r *http.Request, dst any) error {
 	d := json.NewDecoder(r.Body)
@@ -174,7 +181,16 @@ func (s *Server) client(w http.ResponseWriter, r *http.Request) (string, bool) {
 	return id, true
 }
 
-var loginTemplate = template.Must(template.New("login").Parse(`<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>FastCAS</title><body><main><h1>FastCAS</h1>{{if .User}}<p>已登录：{{.User.Name}}</p><h2>授权 {{.Client.Name}}</h2>{{if .Link}}<p>为项目账号 {{.Link.LocalRef}} 完成 FastCAS 认证。项目密码和内容不会交给 FastCAS。</p>{{else}}<p>允许该应用读取以下身份信息并登录：</p>{{end}}<p>{{.Scopes}}</p><form method="post" action="/login"><input type="hidden" name="csrf" value="{{.CSRF}}"><input type="hidden" name="auth_request_id" value="{{.RequestID}}"><button name="action" value="approve">确认并继续</button></form>{{else}}<p>使用 FastCAS 登录。各项目原有登录方式仍然可用。</p><form method="post" action="/login"><input type="hidden" name="csrf" value="{{.CSRF}}"><input type="hidden" name="auth_request_id" value="{{.RequestID}}"><label>邮箱 <input name="email" type="email" required autocomplete="username"></label><label>密码 <input name="password" type="password" required autocomplete="current-password"></label><label>动态验证码或恢复码（已启用时） <input name="mfa_code" autocomplete="one-time-code"></label><input type="hidden" name="return_device" value="{{.ReturnDevice}}"><button name="action" value="login">登录</button></form>{{end}}</main></body></html>`))
+var loginTemplate = authTemplate("login", `<!doctype html><html lang="zh-CN"><head>{{template "auth-head" .}}</head><body><main>{{template "auth-toolbar" .}}<h1>FastCAS</h1>
+{{if .User}}<p>已登录：{{.User.Name}}</p><h2>授权 {{.Client.Name}}</h2>
+{{if .Link}}<p>为项目账号 {{.Link.LocalRef}} 完成 FastCAS 认证。项目密码和内容不会交给 FastCAS。</p>{{else}}<p>允许该应用读取以下身份信息并登录：</p>{{end}}<p>{{.Scopes}}</p>
+<form method="post" action="/login"><input type="hidden" name="csrf" value="{{.CSRF}}"><input type="hidden" name="auth_request_id" value="{{.RequestID}}"><button class="fastui-button fastui-button--primary" name="action" value="approve">确认并继续</button></form>
+{{else}}<p>使用 FastCAS 登录。各项目原有登录方式仍然可用。</p>
+<form method="post" action="/login"><input type="hidden" name="csrf" value="{{.CSRF}}"><input type="hidden" name="auth_request_id" value="{{.RequestID}}">
+<label>邮箱 <input class="fastui-input" name="email" type="email" required autocomplete="username"></label>
+<label>密码 <input class="fastui-input" name="password" type="password" required autocomplete="current-password"></label>
+<label>动态验证码或恢复码（已启用时） <input class="fastui-input" name="mfa_code" autocomplete="one-time-code"></label>
+<input type="hidden" name="return_device" value="{{.ReturnDevice}}"><button class="fastui-button fastui-button--primary" name="action" value="login">登录</button></form>{{end}}{{template "auth-footer" .}}</main></body></html>`)
 
 func (s *Server) loginPage(w http.ResponseWriter, r *http.Request) {
 	// A native form POST from a page with no-referrer is sent by Chromium with
@@ -183,7 +199,7 @@ func (s *Server) loginPage(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Referrer-Policy", "same-origin")
 	csrf := core.RandomToken()
 	s.setCookie(w, "fastcas_form", csrf, 300)
-	data := map[string]any{"CSRF": csrf, "RequestID": r.URL.Query().Get("auth_request_id"), "ReturnDevice": safeDeviceCode(r.URL.Query().Get("return_device"))}
+	data := map[string]any{"Title": "登录", "Assets": s.authAssets, "CSRF": csrf, "RequestID": r.URL.Query().Get("auth_request_id"), "ReturnDevice": safeDeviceCode(r.URL.Query().Get("return_device"))}
 	if id := r.URL.Query().Get("auth_request_id"); id != "" {
 		request, err := s.Store.AuthRequestByID(r.Context(), id)
 		if err != nil {
@@ -437,7 +453,7 @@ func (s *Server) revoke(w http.ResponseWriter, r *http.Request) {
 	}
 	version, err := strconv.ParseInt(strings.Trim(r.Header.Get("If-Match"), `"`), 10, 64)
 	if err != nil {
-		send(w, 428, map[string]string{"code": "version_required"})
+		problem(w, 428, "version_required", "If-Match must contain the current link version")
 		return
 	}
 	result, err := s.Store.RevokeLink(r.Context(), client, chi.URLParam(r, "id"), version)

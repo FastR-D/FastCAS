@@ -34,6 +34,9 @@ jobs:
       - run: go mod download
       - run: go test -race -count=1 ./...
       - run: go vet ./...
+      - name: Shared Go access-token contracts
+        working-directory: .
+        run: go test -race -count=1 ./contracts
 
   python:
     name: Python SDK (${{ matrix.python }})

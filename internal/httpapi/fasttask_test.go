@@ -46,6 +46,9 @@ func TestFastTaskAgainstProvider(t *testing.T) {
 	if err != nil {
 		t.Fatalf("FastTask contract: %v\n%s", err, output)
 	}
+	if !strings.Contains(string(output), "--- PASS: TestFastCASAgainstProvider") {
+		t.Fatalf("FastTask did not execute the required contract: %s", output)
+	}
 	t.Log(strings.TrimSpace(string(output)))
 }
 

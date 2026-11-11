@@ -4,6 +4,14 @@
 
 下文保留阶段性施工记录；旧段落中的“尚未完成”描述只代表写入时的状态，以顶部最新增量和各项目接入说明判断当前实现。
 
+2026-11-11 全范围代码收尾：先更新所有同级 FastRD 仓库并核对 `origin/main`；FastRead 快进到 `962f3d0`、FastResearch 到 `8bf03b3`，补齐 FastLabs `72f8fa2` 与 FastNews `0529942`。FastTask 远端历史重写，原 main 保存在 `codex/preserved-main-20261111`，新 main 对齐 `8e91d76`；补回上游缺失的账号认证入口和契约测试。FastWrite 原有九个未提交文件经 SHA-256 复核保持原样。FastFigure 与其余项目均已对齐，各仓库提交/差异快照在本地 `.local/project-update-result.json`。
+
+本轮按原规划补齐五个账号项目的 provider / login / existing-account-link 独立开关，保留默认兼容、来源会话与撤销通道。TS/Go/Python 使用同一份 19 组离线签名令牌正反例；据此修正缺失 `iat`/`scope`、空 subject 与未来签发时间的跨语言差异，Python SQLite 事务连接改为明确关闭。审计增加事务结果与服务生成的请求编号（016 迁移），历史记录保留 unknown；版本前置条件失败返回 412、限流错误补齐统一结构。FastUI 桌面前端增加一致的 Lucide 线性图标，保留文字及可访问名称，无窄屏适配。
+
+最新本地验收：`make verify-contracts` 已通过七项目内部回归和 **28/28** 必需真实提供方/浏览器案例；TS SDK 23 测、Python SDK 6 测、Go SDK race、OpenAPI 46 路由、服务端 race/vet 均通过。新增的 stale-version Go SDK HTTP 契约另通过。FastWrite 14 项、FastRead 19 项、FastResearch 10 项、FastNews 17 项、FastInsight 45 项、FastLabs 53 项及 FastTask 三核心包 race 通过。记录见 [验收说明](verification.md)。本地发布包位于 `.local/release-final-20261111/`，含服务、Web、三 SDK、OpenAPI、manifest 与 SHA256SUMS，隔离安装/编译和校验通过。
+
+按后续要求移除七项目手动 CI Action，保留本地全项目门禁。代码仍在各工作区，尚未代替用户提交/推送；远端 Actions、真实 registry 上传、生产域名/TLS、生产数据迁移及持续负载验收不记为完成。P0–P6 下面的勾选仅表示代码与相应本地证据，不将生产工作混入代码完成结论。
+
 2026-09-23 七项目远端同步：逐个 fetch 并核对 `origin/main`，仅 FastTask 有 34 个新提交；本地 `main` 已快进到 `7b3d431`，其余六项目已对齐。FastTask 未提交的 FastCAS 接入已恢复并与上游 PWA、Agent harness 合并；原 CAS 迁移 6 改为 9，并增加旧迁移 6 数据库兼容升级测试。FastTask Go 全量测试、vet、前端 169 项测试、生产构建和隔离容器启动通过；真实 Chrome 契约确认 PWA 离线用户缓存仅为项目资料，访问令牌不落盘。完整 `make verify-contracts` 再次通过七项目回归及 28/28 真实提供方/浏览器契约。FastTask 合并前快照仍保留在 Git stash，原有未提交接入仍在工作树；未推送远端。
 
 2026-09-23 本地发布产物增量：新增 `make release` 与 `scripts/build-release.py`，从已锁定源构建 Linux/amd64 服务二进制、Web 归档、npm TypeScript 包、Python wheel、Go SDK 源码快照及 OpenAPI，输出 manifest 和 SHA-256 清单；隔离目录实际安装/导入 Node 与 Python 包，解包编译 Go SDK。两次独立构建发现 wheel 元数据时间戳不稳定，固定 `SOURCE_DATE_EPOCH` 后所有产物与校验和逐字节相同。单仓库 CI 配置新增构建、验签与 artifact 上传步骤，但当前 FastCAS 无 Git 仓库/远程发布，Go 子模块 tag、npm/Python registry 发布、托管 CI 与七项目正式部署仍未完成；详见[发布说明](release.md)。
@@ -92,19 +100,21 @@
 
 2026-09-23 退出增量：中心 `logout-all` 与身份停用在数据库事务中撤销中心会话/令牌并排入标准 OIDC back-channel logout；普通退出与单会话撤销带 sid 精确传播，Go/PostgreSQL 测试验证只撤销对应会话、保留其他会话及重复操作幂等。React 会话页增加全局操作入口，管理员可在登记或更新应用时配置 `events_uri` 与 `backchannel_logout_uri`；更新在近期 MFA、同源 CSRF 边界后执行，真实数据库测试验证无效 URL 拒绝及审计失败回滚。TS、Go、Python SDK 均可验签退出通知，五个账号型项目接收端按身份及可选 sid 原子去重，只撤销 FastCAS 来源会话。五个项目均已通过真实 Go/PostgreSQL 提供方到项目 HTTP 接收端的投递契约。客户端生产 URL 登记和全局浏览器验收尚待完成。
 
-## 必须交付
+## 代码交付与本地验收
 
 - [x] P0 固定协议库/运行时；真实数据库一次性授权码、刷新轮换与绑定事务验证；至少两个运行时 RP 互通。
-- [ ] P1 Go/PostgreSQL 服务；登录、邀请注册、恢复、MFA、安全中心；应用/服务身份管理、绑定、撤销、审计。
-- [ ] P1 OIDC code/PKCE、discovery/JWKS、client credentials、refresh、introspection、revocation、logout；签名轮换、outbox。
-- [ ] P2 TS（Node/Bun/browser）、Go（net/http/Gin）、Python（sync/async/FastAPI）SDK、契约 fixtures、示例与兼容矩阵。
-- [ ] P3 FastWrite 可选认证/登录、绑定旧账号、解绑、会话来源与业务 ACL 回归。
-- [ ] P3 FastTask Go 升级与可选接入；保留本地/设备/服务边界。
-- [ ] P3 FastRead 恢复本地登录、邀请/恢复；CAS 与 legacy Research 共存、工作区不变。
-- [ ] P4 Research 稳定本地账号、Key/业务内容分离、绑定与可选登录、旧 SSO 兼容。
-- [ ] P4 News 本地账号与个人内容存储、可选绑定/登录、Research 连接器与生成器更新。
-- [ ] P5 Device flow、受限 token exchange、服务授权与本机 SDK 示例；非账户型工具不强制新增登录墙。
-- [ ] P6 管理/绑定 OpenAPI、React UI、可复现部署、迁移/备份/恢复/回滚、CI 与所有规划验收项。
+- [x] P1 Go/PostgreSQL 服务；登录、邀请注册、恢复、MFA、安全中心；应用/服务身份管理、绑定、撤销、审计。
+- [x] P1 OIDC code/PKCE、discovery/JWKS、client credentials、refresh、introspection、revocation、logout；签名轮换、outbox。
+- [x] P2 TS（Node/Bun/browser）、Go（net/http/Gin）、Python（sync/async/FastAPI）SDK、契约 fixtures、示例与兼容矩阵。
+- [x] P3 FastWrite 可选认证/登录、绑定旧账号、解绑、会话来源与业务 ACL 回归。
+- [x] P3 FastTask Go 升级与可选接入；保留本地/设备/服务边界。
+- [x] P3 FastRead 恢复本地登录、邀请/恢复；CAS 与 legacy Research 共存、工作区不变。
+- [x] P4 Research 稳定本地账号、Key/业务内容分离、绑定与可选登录、旧 SSO 兼容。
+- [x] P4 News 本地账号与个人内容存储、可选绑定/登录、Research 连接器与生成器更新。
+- [x] P5 Device flow、受限 token exchange、服务授权与本机 SDK 示例；非账户型工具不强制新增登录墙。
+- [x] P6 管理/绑定 OpenAPI、React UI、部署及迁移/备份/恢复/回滚代码、发布构建与 CI 入口；本地门禁通过。
+
+- [ ] P6 生产发布验收：正式域名/TLS、真实数据演练、各仓库接入提交后的远端 CI、registry/Go tag 发布与生产 SLO。
 
 ## 当前证据
 
@@ -173,3 +183,5 @@ React 控制台首版：`web/` 接入 `/console/` 可选静态挂载，安全中
 真实浏览器入门闭环补验（2026-09-23）：新增可选 Chrome 契约 `TestConsoleAgainstRealBrowser`，在隔离 PostgreSQL/真实 Go HTTP/已构建 React 页面中通过邀请注册 → 登录 → 会话页 → 退出 → 恢复 → 旧密码拒绝 → 新密码登录。浏览器发现并修复登录页 no-referrer 造成 `Origin: null` 的原生表单失败；改为 same-origin 后仍通过跨站拒绝测试。完整服务端 race、go vet、web npm ci/build 均通过。管理员 MFA、项目绑定及生产部署浏览器验收仍未完成。
 
 管理员浏览器与应用密钥进展：真实 Chrome/Go/PostgreSQL 测试完成 TOTP 开通，证明启用前管理 API 拒绝、启用后可登记应用和签发邀请；创建后的密钥轮换在页面通过，并验证新密钥只在内存中展示。004 迁移支持上一把密钥有界交接期，默认 10 分钟、最多 1 小时；到期自动拒绝旧密钥，连续轮换覆盖更旧凭证。真实 PostgreSQL 测试覆盖权限、到期、公开客户端拒绝及审计失败回滚。服务端 race、go vet 和前端构建通过。服务身份和多实例凭证分发/部署演练仍待完成。
+
+2026-11-11 桌面控制台与审计增量：前端改用 npm 正式包 `@fastrd/ui-react@0.1.2` / `@fastrd/ui-foundation@0.1.2`，锁定依赖与完整性。分组侧栏、桌面布局、共享控件/反馈/主题替换原早期样式；登录、OIDC 同意、设备确认与完成页通过 Vite manifest 复用 npm 构建的样式，原生表单继续由 Go 校验。应用权限与通知地址改为 FastUI 对话框，失败保留输入并支持重试/取消。高风险确认统一使用原生模态对话框；安全页和各管理页卸载时清除一次性密钥与恢复码显示。新增审计操作/执行者/目标/时间组合筛选、保留条件分页和 015 检索索引，OpenAPI 同步更新。按本轮要求以桌面场景交付，未开展窄屏适配。验证命令与本轮证据见 [控制台说明](../web/README.md)；全部商业化及生产验收仍未完成。
