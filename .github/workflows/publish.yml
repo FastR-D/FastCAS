@@ -2,7 +2,8 @@ name: Publish SDKs
 
 on:
   push:
-    tags: ['v*']
+    # Server deployments must not publish language packages.
+    tags: ['v*', '!v*-deploy.*']
   workflow_dispatch:
     inputs:
       release_tag:
