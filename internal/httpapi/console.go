@@ -22,6 +22,10 @@ func Console(api http.Handler, dir string) (http.Handler, error) {
 	}
 	files := http.StripPrefix("/console/", http.FileServer(http.Dir(dir)))
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/" && (r.Method == "GET" || r.Method == "HEAD") {
+			http.Redirect(w, r, "/console/", http.StatusTemporaryRedirect)
+			return
+		}
 		if r.URL.Path == "/console" {
 			http.Redirect(w, r, "/console/", http.StatusTemporaryRedirect)
 			return
