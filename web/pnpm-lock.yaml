@@ -9,11 +9,11 @@ importers:
   .:
     dependencies:
       '@fastrd/ui-foundation':
-        specifier: https://github.com/FastR-D/FastUI/releases/download/v0.1.0/fastrd-ui-foundation-0.1.0.tgz
-        version: https://github.com/FastR-D/FastUI/releases/download/v0.1.0/fastrd-ui-foundation-0.1.0.tgz
+        specifier: 0.1.2
+        version: 0.1.2
       '@fastrd/ui-react':
-        specifier: https://github.com/FastR-D/FastUI/releases/download/v0.1.0/fastrd-ui-react-0.1.0.tgz
-        version: https://github.com/FastR-D/FastUI/releases/download/v0.1.0/fastrd-ui-react-0.1.0.tgz(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+        specifier: 0.1.2
+        version: 0.1.2(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       react:
         specifier: 19.2.4
         version: 19.2.4
@@ -195,13 +195,11 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@fastrd/ui-foundation@https://github.com/FastR-D/FastUI/releases/download/v0.1.0/fastrd-ui-foundation-0.1.0.tgz':
-    resolution: {integrity: sha512-5O4s9BXXHXWk7GbzPfMYX6HjNi0DKryfWLRPYMZINNb4ew3arjCKbJvxFaSvqcCvhHxmrf8OZDg9GPmfvdnRtw==, tarball: https://github.com/FastR-D/FastUI/releases/download/v0.1.0/fastrd-ui-foundation-0.1.0.tgz}
-    version: 0.1.0
+  '@fastrd/ui-foundation@0.1.2':
+    resolution: {integrity: sha512-Jobx7DanQOejVRFfsT5DFXND7rtcvSUzZ5Zui+lY3oAuretz8vwkzqHh1Gd0+ezJubw82WeFsnsXdvbWB4t1YA==}
 
-  '@fastrd/ui-react@https://github.com/FastR-D/FastUI/releases/download/v0.1.0/fastrd-ui-react-0.1.0.tgz':
-    resolution: {integrity: sha512-zsnN8Afm889TyhPX0ZQQ4hIn5Bj1EsFbEZ857CQXDgmCIOEfY3369bCFn1VEelR/EWjU5Lpyjj6D1E9lVtQ5uw==, tarball: https://github.com/FastR-D/FastUI/releases/download/v0.1.0/fastrd-ui-react-0.1.0.tgz}
-    version: 0.1.0
+  '@fastrd/ui-react@0.1.2':
+    resolution: {integrity: sha512-/7WrTu/LrsMWcJKQglQBmpe+sXWj0hGUt66mgrZ3f6B/5dZfb03xdrbPSKRRGFmCA8H6O8stmU9oOFMSuW7YHQ==}
     peerDependencies:
       react: ^18.3.0 || ^19.0.0
       react-dom: ^18.3.0 || ^19.0.0
@@ -555,11 +553,11 @@ snapshots:
   '@esbuild/win32-x64@0.25.12':
     optional: true
 
-  '@fastrd/ui-foundation@https://github.com/FastR-D/FastUI/releases/download/v0.1.0/fastrd-ui-foundation-0.1.0.tgz': {}
+  '@fastrd/ui-foundation@0.1.2': {}
 
-  '@fastrd/ui-react@https://github.com/FastR-D/FastUI/releases/download/v0.1.0/fastrd-ui-react-0.1.0.tgz(react-dom@19.2.4(react@19.2.4))(react@19.2.4)':
+  '@fastrd/ui-react@0.1.2(react-dom@19.2.4(react@19.2.4))(react@19.2.4)':
     dependencies:
-      '@fastrd/ui-foundation': https://github.com/FastR-D/FastUI/releases/download/v0.1.0/fastrd-ui-foundation-0.1.0.tgz
+      '@fastrd/ui-foundation': 0.1.2
       react: 19.2.4
       react-dom: 19.2.4(react@19.2.4)
 
