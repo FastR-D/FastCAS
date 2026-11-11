@@ -29,7 +29,7 @@ func TestConsoleRoutingAndSecurityHeaders(t *testing.T) {
 	tests := []struct {
 		method, path string
 		want         int
-	}{{"GET", "/api/v1/me", 201}, {"GET", "/console", 307}, {"GET", "/console/", 200}, {"HEAD", "/console/assets/app.js", 200}, {"GET", "/console/assets/app.js", 200}, {"GET", "/console/other", 404}, {"GET", "/console/.vite/manifest.json", 404}, {"POST", "/console/", 405}}
+	}{{"GET", "/", 307}, {"HEAD", "/", 307}, {"GET", "/api/v1/me", 201}, {"GET", "/console", 307}, {"GET", "/console/", 200}, {"HEAD", "/console/assets/app.js", 200}, {"GET", "/console/assets/app.js", 200}, {"GET", "/console/other", 404}, {"GET", "/console/.vite/manifest.json", 404}, {"POST", "/console/", 405}}
 	for _, tc := range tests {
 		req := httptest.NewRequest(tc.method, tc.path, nil)
 		rec := httptest.NewRecorder()
