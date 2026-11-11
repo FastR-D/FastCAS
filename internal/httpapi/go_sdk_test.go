@@ -123,6 +123,13 @@ func TestGoSDKLoginAndLinkContract(t *testing.T) {
 	if resolved.LocalRef != "go-original-user" {
 		t.Fatal("local account changed")
 	}
+	stale := *active
+	stale.Version++
+	_, err = client.RevokeLink(ctx, &stale)
+	var precondition *fastcas.APIError
+	if !errors.As(err, &precondition) || precondition.Status != 412 || precondition.Code != "version_changed" {
+		t.Fatalf("stale link version must return 412: %v", err)
+	}
 	revoked, err := client.RevokeLink(ctx, active)
 	if err != nil {
 		t.Fatal(err)

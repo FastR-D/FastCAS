@@ -44,7 +44,7 @@ func TestFastNewsAgainstRealBrowser(t *testing.T) {
 	cmd := exec.CommandContext(ctx, python, "tests/fastcas_browser_contract.py")
 	cmd.Dir = filepath.Join(root, "FastNews")
 	cmd.Env = append(os.Environ(), "FASTCAS_CONTRACT_ISSUER="+provider.issuer, "FASTCAS_CONTRACT_NEWS_ORIGIN="+origin,
-		"PYTHONPATH="+filepath.Join(root, "FastCAS", "sdk", "python", "src")+string(os.PathListSeparator)+os.Getenv("PYTHONPATH"))
+		"PYTHONPATH="+filepath.Join(root, "FastNews")+string(os.PathListSeparator)+os.Getenv("PYTHONPATH"))
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		t.Fatalf("FastNews browser contract: %v\n%s", err, output)

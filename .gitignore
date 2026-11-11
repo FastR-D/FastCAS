@@ -13,3 +13,6 @@ sdk/typescript/dist/
 sdk/python/build/
 /dist/
 *.egg-info/
+
+# Local Go SDK test artifacts
+/sdk/go/testdata/

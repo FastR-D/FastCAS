@@ -19,3 +19,18 @@
 身份状态事件契约在真实项目接收端记录 outbox 创建到项目确认的时间。FastTask 案例故意让接收方首次返回 HTTP 503，并验证自动重试后 CAS 来源会话和刷新令牌失效、本地会话保留；race 模式连续三次到达时间为 2.06–2.18 秒。FastWrite、FastRead、FastResearch、FastNews 的正常投递也都核对到达时间并要求低于 30 秒。此为隔离本机测量，不覆盖生产网络和容量负载。
 
 可单独运行 `make verify-capacity` 测量真实 PostgreSQL/HTTP 下 64 个独立账号与独立环回来源地址的授权码登录、同意和刷新突发，以及签名 outbox 的积压、503 故障和退避恢复（`-race -parallel 8`）；缺少独立数据库配置会直接失败，不把跳过当通过。2026-09-23 单独运行登录项：64/64 完成，登录 p50 1.83 秒、p95 2.41 秒，刷新 p50 95 毫秒、p95 433 毫秒，突发阶段约 15.25 秒。单独运行积压项：256/256 次唯一签名通知全部成功，无死信，8 worker 投递阶段约 213 毫秒、到达 p95 约 205 毫秒。故障项：128 个通知先收 503，再经过真实 2 秒退避全部成功，256 条尝试历史齐全，单项恢复阶段约 2.21 秒。整套入口并行运行时三项仍通过，但共享机器上的恢复阶段为 7.84 秒。创建测试账号的时间不计入突发阶段；这些值是当前机器的诊断基线，不是生产 SLO。生产 TLS/代理、持续数百用户、长时间事件积压与跨项目撤销压力仍需独立测量。单账号/同来源密码登录存在每 15 分钟 12 次的安全限流，不应通过提高该限制来伪造容量结果。
+
+2026-11-11 控制台增量：同一真实浏览器契约改为 1440px 桌面验收，增加 FastUI 深浅主题与偏好持久化、应用配置对话框失败重试/取消/焦点恢复、取消密钥轮换、离开管理页清除密钥，以及审计组合筛选/分页/重置。原生登录与设备页检查 npm 样式实际加载，并单独验证禁用 JavaScript 的原生登录。截图输出到 `.local/ui-verification/`，使用隔离测试账号。新增后端 `TestAuditFiltersAndPagination` 覆盖近期 MFA、时间区间边界、筛选条件与游标组合、非法输入和参数绑定；`TestConsoleAuthManifestValidation` 覆盖 manifest 缺失、资产缺失、路径逃逸与共享 CSS 依赖。静态路由明确拒绝读取 manifest。部署须复制整个 Web dist（包含 `.vite/manifest.json`）。
+
+本轮实际验证：锁定依赖安装、TypeScript/Vite 构建、OpenAPI 检查、`go vet ./...`、独立 PostgreSQL 下本仓库 `go test -race ./...`（未启用可选跨项目浏览器开关），以及单独启用 `TestConsoleAgainstRealBrowser` 的 Chrome/race 流程。尝试将 `FASTCAS_BROWSER_CONTRACT=1` 用于全仓测试时，其他项目浏览器案例因 FastLabs 目录缺失、FastNews 虚拟环境、FastRead/Research/Task 前端产物及 FastWrite 测试管理员配置不齐而失败；不计作七项目全链路通过，本轮未修改这些兄弟项目。
+
+
+2026-11-11 更新八个同级项目后重新完成全量门禁：七项目内部回归与 28/28 必需真实提供方/浏览器案例全部通过，原先缺失环境和过期 UI 选择器的问题已解决。FastTask 恢复账号认证入口，并使其与原 Research Key 入口并存。五个账号项目新增独立开关回归，关闭新登录/绑定不会阻断旧关系撤销或本地会话。TS/Go/Python 共用 19 组离线令牌 fixture，三个 SDK 均执行并通过；此前 Go 对 iat/scope 的宽松差异已修正。审计请求编号/结果与 412 版本前置条件另有真实 PostgreSQL/HTTP 测试。完整输出保留在 `.local/full-verification-current.log`（仅本地测试数据）。
+
+同轮容量烟测通过：64 个独立浏览器会话登录/刷新完成，本机登录 p95 约 1.23 秒、刷新 p95 约 30 毫秒；256 条事件积压由 8 个 worker 处理，投递 p95 约 288 毫秒；128 条首次 503 的通知约 2.27 秒后全部恢复。本机隔离数字不作为生产 SLO。调整左右顶部栏分隔线后，另一次真实 Chrome 契约通过并刷新桌面截图；两侧使用共同的 74px 高度。
+
+按要求移除 Seven-project integration Action；七项目回归保留本地脚本入口。SDK CI 和发布 workflow 保留。共享 Go 验签测试位于主模块 `contracts` 包，和 TS/Python 读取同一个已跟踪 fixture；忽略的 `sdk/go/testdata/` 不影响干净检出。
+
+0.1.2 发布后再次验证：npm/PyPI 包与 Go 模块均从正式 registry 安装，七项目回归通过；去掉项目测试中的本地 SDK PYTHONPATH 覆盖后，修正 FastNews 浏览器脚本的项目模块搜索路径，随后重新执行全部真实提供方门禁，**28/28 通过**。记录为 `.local/v012-provider-gate.log`，内部回归在 `.local/v012-full-verification.log`。SDK 4 项远端 CI、发布流程以及 FastCAS core CI 全部成功。FastTask 全包单测与 vet 也通过；FastResearch Docker 镜像构建成功，断网加载 SDK 返回 0.1.2。
+
+FastTask Docker 使用 `--build-arg APK_MIRROR=mirrors.aliyun.com` 重试后构建通过（默认源曾超时），镜像可在断网环境执行 version；FastResearch 容器也已构建并验证正式 npm SDK 0.1.2。FastWrite 严格可选属性测试经修正后全部 workspace 类型检查与 14 个认证测试通过，七项目本地脚本现先执行 server typecheck。FastNews 手动 CD 的 secret 条件语法也已修正，未触发部署。

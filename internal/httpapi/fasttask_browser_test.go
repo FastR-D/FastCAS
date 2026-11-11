@@ -47,5 +47,8 @@ func TestFastTaskAgainstRealBrowser(t *testing.T) {
 	if err != nil {
 		t.Fatalf("FastTask browser contract: %v\n%s", err, output)
 	}
+	if !strings.Contains(string(output), "--- PASS: TestFastCASBrowserAgainstProvider") {
+		t.Fatalf("FastTask did not execute the required contract: %s", output)
+	}
 	t.Log(strings.TrimSpace(string(output)))
 }

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from contextlib import contextmanager
 import json
 import os
 import sqlite3
@@ -32,8 +33,14 @@ class SQLiteTransactionStore:
         with self._connect() as db:
             db.execute("CREATE TABLE IF NOT EXISTS fastcas_transactions(state TEXT PRIMARY KEY, payload TEXT NOT NULL, expires REAL NOT NULL)")
 
+    @contextmanager
     def _connect(self):
-        return sqlite3.connect(str(self.path), timeout=10)
+        db = sqlite3.connect(str(self.path), timeout=10)
+        try:
+            with db:
+                yield db
+        finally:
+            db.close()
 
     def put(self, transaction: dict) -> None:
         with self._connect() as db:

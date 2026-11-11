@@ -138,7 +138,7 @@ func TestLinkProofConflictRevocationAndLocalIdentitySurvival(t *testing.T) {
 	if _, err = s.PrepareLink(ctx, "write", second.ID, second.Nonce, u.ID); !errors.Is(err, core.ErrConflict) {
 		t.Fatalf("duplicate subject not rejected: %v", err)
 	}
-	if _, err = s.RevokeLink(ctx, "write", link.ID, link.Version+1); !errors.Is(err, core.ErrConflict) {
+	if _, err = s.RevokeLink(ctx, "write", link.ID, link.Version+1); !errors.Is(err, core.ErrPrecondition) {
 		t.Fatal("stale version accepted")
 	}
 	revoked, err := s.RevokeLink(ctx, "write", link.ID, link.Version)

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/FastR-D/FastCAS/internal/core"
@@ -63,7 +64,7 @@ func (s *Server) authenticated(w http.ResponseWriter, r *http.Request, admin boo
 		return nil, false
 	}
 	if admin && s.Store.RequireAdmin(r.Context(), session) != nil {
-		send(w, 403, map[string]string{"code": "admin_mfa_required", "message": "Administrator access requires recent multi-factor authentication"})
+		problem(w, 403, "admin_mfa_required", "Administrator access requires recent multi-factor authentication")
 		return nil, false
 	}
 	return session, true
@@ -198,7 +199,8 @@ func (s *Server) redeemMFAReset(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !allowed {
-		send(w, 429, map[string]string{"code": "rate_limited"})
+		w.Header().Set("Retry-After", "300")
+		problem(w, 429, "rate_limited", "Too many attempts; try again after the rate-limit window")
 		return
 	}
 	var input struct {
@@ -226,7 +228,8 @@ func (s *Server) redeem(w http.ResponseWriter, r *http.Request, kind string) {
 		return
 	}
 	if !allowed {
-		send(w, 429, map[string]string{"code": "rate_limited"})
+		w.Header().Set("Retry-After", "300")
+		problem(w, 429, "rate_limited", "Too many attempts; try again after the rate-limit window")
 		return
 	}
 	var input struct {
@@ -664,7 +667,53 @@ func (s *Server) audits(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	rows, err := s.Store.DB.Query(r.Context(), `SELECT id,actor,action,target,created_at FROM audit_events WHERE ($1::bigint=0 OR id<$1) ORDER BY id DESC LIMIT 100`, before)
+	query := r.URL.Query()
+	action, actor, target := strings.TrimSpace(query.Get("action")), strings.TrimSpace(query.Get("actor")), strings.TrimSpace(query.Get("target"))
+	if len(action) > 200 || len(actor) > 200 || len(target) > 200 {
+		failure(w, core.ErrForbidden)
+		return
+	}
+	var since, until *time.Time
+	for key, destination := range map[string]**time.Time{"since": &since, "until": &until} {
+		if raw := query.Get(key); raw != "" {
+			value, err := time.Parse(time.RFC3339Nano, raw)
+			if err != nil {
+				failure(w, core.ErrForbidden)
+				return
+			}
+			*destination = &value
+		}
+	}
+	if since != nil && until != nil && !since.Before(*until) {
+		failure(w, core.ErrForbidden)
+		return
+	}
+	// Include only selected predicates so PostgreSQL can use the matching page
+	// index even when pgx switches to a cached generic plan. Values stay bound.
+	conditions, arguments := []string{"true"}, []any{}
+	add := func(column, operator string, value any) {
+		arguments = append(arguments, value)
+		conditions = append(conditions, column+operator+"$"+strconv.Itoa(len(arguments)))
+	}
+	if before > 0 {
+		add("id", "<", before)
+	}
+	if action != "" {
+		add("action", "=", action)
+	}
+	if actor != "" {
+		add("actor", "=", actor)
+	}
+	if target != "" {
+		add("target", "=", target)
+	}
+	if since != nil {
+		add("created_at", ">=", *since)
+	}
+	if until != nil {
+		add("created_at", "<", *until)
+	}
+	rows, err := s.Store.DB.Query(r.Context(), `SELECT id,actor,action,target,created_at,request_id,result FROM audit_events WHERE `+strings.Join(conditions, " AND ")+` ORDER BY id DESC LIMIT 100`, arguments...)
 	if err != nil {
 		failure(w, err)
 		return
@@ -676,11 +725,13 @@ func (s *Server) audits(w http.ResponseWriter, r *http.Request) {
 		Action    string    `json:"action"`
 		Target    string    `json:"target"`
 		CreatedAt time.Time `json:"created_at"`
+		RequestID string    `json:"request_id"`
+		Result    string    `json:"result"`
 	}
 	list := []Event{}
 	for rows.Next() {
 		var e Event
-		if err = rows.Scan(&e.ID, &e.Actor, &e.Action, &e.Target, &e.CreatedAt); err != nil {
+		if err = rows.Scan(&e.ID, &e.Actor, &e.Action, &e.Target, &e.CreatedAt, &e.RequestID, &e.Result); err != nil {
 			failure(w, err)
 			return
 		}

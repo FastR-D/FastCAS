@@ -209,7 +209,7 @@ class FastCAS:
 
     def verify_access_token(self, token: str, audience: str, scopes: list[str] | None = None) -> dict:
         claims = self._claims(token, audience)
-        if claims.get("token_use") != "access" or not isinstance(claims.get("scope"), str):
+        if claims.get("token_use") != "access" or not isinstance(claims.get("scope"), str) or not isinstance(claims.get("sub"), str) or not claims["sub"]:
             raise FastCASError("wrong_token_type", "API access token required", 401)
         if not set(scopes or []).issubset(set(claims["scope"].split())):
             raise FastCASError("insufficient_scope", "Required permission missing", 403)

@@ -1,6 +1,6 @@
 # fastcas-sdk
 
-发布后安装：`pip install fastcas-sdk==0.1.1`。版本发布与认证配置见[发布文档](../../docs/release.md)。
+发布后安装：`pip install fastcas-sdk==0.1.2`。版本发布与认证配置见[发布文档](../../docs/release.md)。
 
 可运行的服务身份调用见 [三语言示例](../../examples/service-tokens/README.md)；它按资源受众验签并查询中心撤销状态，进程不会输出令牌。
 

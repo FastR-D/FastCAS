@@ -47,7 +47,7 @@ func TestFastReadAgainstRealBrowser(t *testing.T) {
 	cmd := exec.CommandContext(ctx, python, "scripts/fastcas_browser_contract.py")
 	cmd.Dir = filepath.Join(root, "FastRead")
 	cmd.Env = append(os.Environ(), "FASTCAS_CONTRACT_ISSUER="+provider.issuer, "FASTCAS_CONTRACT_READ_ORIGIN="+origin,
-		"PYTHONPATH="+filepath.Join(root, "FastRead", "backend")+string(os.PathListSeparator)+filepath.Join(root, "FastCAS", "sdk", "python", "src")+string(os.PathListSeparator)+os.Getenv("PYTHONPATH"))
+		"PYTHONPATH="+filepath.Join(root, "FastRead", "backend")+string(os.PathListSeparator)+os.Getenv("PYTHONPATH"))
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		t.Fatalf("FastRead browser contract: %v\n%s", err, output)

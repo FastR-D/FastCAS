@@ -14,4 +14,4 @@
 | Python / CLI | [FastInsight](../../FastInsight/scripts/service_auth.py) | 服务身份只代表投递应用，收件人单独校验 |
 | Python / 本机 | [FastLabs](../../FastLabs/fastcas_pairing.py) | 设备码与本机二次确认，不赋予远程任务权限 |
 
-当前本地验证组合为 Go 1.26.8、Node 22、Bun 1.4、Python 3.10（SDK）及 Python 3.13（FastRead/FastNews）。三语言 SDK 当前版本为 0.1.1，发布后可通过 `go get github.com/FastR-D/FastCAS/sdk/go@v0.1.1`、`pip install fastcas-sdk==0.1.1`、`pnpm add @fastrd/fastcas@0.1.1` 安装。仓库契约测试继续使用本地路径，发布配置见[发布指南](../docs/release.md)。实际发布前仍需在目标运行环境重新执行[全项目门禁](../docs/verification.md)，不能把本表当作跨版本兼容承诺。
+当前本地验证组合为 Go 1.26.8、Node 22、Bun 1.4、Python 3.10（SDK）及 Python 3.13（FastRead/FastNews）。三语言 SDK 当前版本为 0.1.2，发布后可通过 `go get github.com/FastR-D/FastCAS/sdk/go@v0.1.2`、`pip install fastcas-sdk==0.1.2`、`pnpm add @fastrd/fastcas@0.1.2` 安装。仓库契约测试继续使用本地路径，发布配置见[发布指南](../docs/release.md)。实际发布前仍需在目标运行环境重新执行[全项目门禁](../docs/verification.md)，不能把本表当作跨版本兼容承诺。

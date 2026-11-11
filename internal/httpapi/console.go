@@ -13,6 +13,13 @@ func Console(api http.Handler, dir string) (http.Handler, error) {
 	if info, err := os.Stat(filepath.Join(dir, "index.html")); err != nil || info.IsDir() {
 		return nil, fmt.Errorf("console build missing: %s", dir)
 	}
+	if server, ok := api.(*Server); ok {
+		assets, err := readAuthAssets(dir)
+		if err != nil {
+			return nil, err
+		}
+		server.authAssets = assets
+	}
 	files := http.StripPrefix("/console/", http.FileServer(http.Dir(dir)))
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/console" {

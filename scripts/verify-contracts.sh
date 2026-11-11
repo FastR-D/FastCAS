@@ -17,7 +17,7 @@ for sibling in FastWrite FastTask FastRead FastResearch FastNews FastInsight Fas
 done
 
 python3 api/check.py
-(cd sdk/typescript && pnpm run build)
+(cd sdk/typescript && pnpm test)
 (cd web && pnpm run build)
 (cd ../FastWrite && bun run --filter @fastwrite/web build)
 (cd ../FastResearch && npm run build)

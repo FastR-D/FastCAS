@@ -1,6 +1,6 @@
 # @fastrd/fastcas
 
-发布后安装：`pnpm add @fastrd/fastcas@0.1.1`。版本发布与认证配置见[发布文档](../../docs/release.md)。
+发布后安装：`pnpm add @fastrd/fastcas@0.1.2`。版本发布与认证配置见[发布文档](../../docs/release.md)。
 
 可运行的 Node 服务身份调用见 [三语言示例](../../examples/service-tokens/README.md)。
 

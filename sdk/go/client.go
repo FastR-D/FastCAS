@@ -396,6 +396,18 @@ func (c *Client) VerifyAccessToken(ctx context.Context, raw, audience string, sc
 	if err = verified.Claims(&claims); err != nil {
 		return nil, err
 	}
+	// OIDC verification alone does not require iat or a scope claim for API
+	// tokens. Match the TypeScript/Python access-token boundary explicitly.
+	var required struct {
+		IssuedAt *float64 `json:"iat"`
+		Scope    *string  `json:"scope"`
+	}
+	if err = verified.Claims(&required); err != nil {
+		return nil, err
+	}
+	if required.IssuedAt == nil || *required.IssuedAt > float64(time.Now().Unix())+60 || required.Scope == nil {
+		return nil, errors.New("issued-at and scope required for API access token")
+	}
 	if claims.TokenUse != "access" || claims.Subject == "" {
 		return nil, errors.New("API access token required")
 	}

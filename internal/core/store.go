@@ -22,6 +22,7 @@ var migrations embed.FS
 var (
 	ErrUnauthorized = errors.New("authentication required")
 	ErrConflict     = errors.New("account or binding conflict")
+	ErrPrecondition = errors.New("binding version changed")
 	ErrExpired      = errors.New("transaction expired or already consumed")
 	ErrForbidden    = errors.New("operation not permitted")
 )
@@ -210,6 +211,6 @@ func (s *Store) CheckCSRF(ctx context.Context, token, csrf string) error {
 }
 
 func audit(ctx context.Context, tx pgx.Tx, actor, action, target string) error {
-	_, err := tx.Exec(ctx, `INSERT INTO audit_events(actor,action,target) VALUES($1,$2,$3)`, actor, action, target)
+	_, err := tx.Exec(ctx, `INSERT INTO audit_events(actor,action,target,request_id,result) VALUES($1,$2,$3,$4,'success')`, actor, action, target, auditRequestID(ctx))
 	return err
 }

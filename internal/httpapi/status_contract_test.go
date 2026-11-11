@@ -103,7 +103,7 @@ func runIdentityStatusContract(t *testing.T, spec statusContract) {
 	// command's directory and environment are supplied by the project adapter.
 	cmd.Dir = configured.Dir
 	cmd.Env = append(configured.Env, "FASTCAS_CONTRACT_STATUS_ACK_SIGNAL="+ackSignal)
-	var output bytes.Buffer
+	var output processLog
 	cmd.Stdout = &output
 	cmd.Stderr = &output
 	if err = cmd.Start(); err != nil {

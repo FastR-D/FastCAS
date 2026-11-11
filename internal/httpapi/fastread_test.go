@@ -52,7 +52,7 @@ func TestFastReadAgainstProvider(t *testing.T) {
 	}
 	cmd := exec.CommandContext(ctx, python, "scripts/fastcas_contract.py")
 	cmd.Dir = filepath.Join(root, "FastRead")
-	cmd.Env = append(os.Environ(), "FASTCAS_CONTRACT_ISSUER="+b.issuer, "FASTCAS_CONTRACT_BACKCHANNEL="+backchannel, "PYTHONPATH="+filepath.Join(root, "FastRead/backend")+string(os.PathListSeparator)+filepath.Join(root, "FastCAS/sdk/python/src")+string(os.PathListSeparator)+os.Getenv("PYTHONPATH"))
+	cmd.Env = append(os.Environ(), "FASTCAS_CONTRACT_ISSUER="+b.issuer, "FASTCAS_CONTRACT_BACKCHANNEL="+backchannel, "PYTHONPATH="+filepath.Join(root, "FastRead/backend")+string(os.PathListSeparator)+os.Getenv("PYTHONPATH"))
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		t.Fatalf("FastRead contract: %v\n%s", err, output)
@@ -68,7 +68,7 @@ func TestFastReadIdentityStatusAgainstProvider(t *testing.T) {
 		}
 		cmd := exec.Command(python, "scripts/fastcas_contract.py")
 		cmd.Dir = filepath.Join(root, "FastRead")
-		cmd.Env = append(os.Environ(), "FASTCAS_CONTRACT_ISSUER="+issuer, "FASTCAS_CONTRACT_BACKCHANNEL="+origin+"/api/auth/fastcas/backchannel-logout", "FASTCAS_CONTRACT_STATUS_SIGNAL="+signal, "PYTHONPATH="+filepath.Join(root, "FastRead/backend")+string(os.PathListSeparator)+filepath.Join(root, "FastCAS/sdk/python/src")+string(os.PathListSeparator)+os.Getenv("PYTHONPATH"))
+		cmd.Env = append(os.Environ(), "FASTCAS_CONTRACT_ISSUER="+issuer, "FASTCAS_CONTRACT_BACKCHANNEL="+origin+"/api/auth/fastcas/backchannel-logout", "FASTCAS_CONTRACT_STATUS_SIGNAL="+signal, "PYTHONPATH="+filepath.Join(root, "FastRead/backend")+string(os.PathListSeparator)+os.Getenv("PYTHONPATH"))
 		return cmd
 	}})
 }

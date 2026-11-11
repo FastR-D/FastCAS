@@ -74,7 +74,7 @@ func TestFastLabsAgainstRealBrowser(t *testing.T) {
 	cmd := exec.CommandContext(ctx, python, "tests/fastcas_browser_contract.py")
 	cmd.Dir = filepath.Join(root, "FastLabs")
 	cmd.Env = append(os.Environ(), "FASTCAS_CONTRACT_ISSUER="+issuer, "FASTCAS_CONTRACT_LABS_ORIGIN="+origin,
-		"FASTCAS_CONTRACT_SUBJECT="+user.ID, "PYTHONPATH="+filepath.Join(root, "FastLabs")+string(os.PathListSeparator)+filepath.Join(root, "FastLabs", "tests")+string(os.PathListSeparator)+filepath.Join(root, "FastCAS", "sdk", "python", "src"))
+		"FASTCAS_CONTRACT_SUBJECT="+user.ID, "PYTHONPATH="+filepath.Join(root, "FastLabs")+string(os.PathListSeparator)+filepath.Join(root, "FastLabs", "tests"))
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		t.Fatalf("FastLabs browser contract: %v\n%s", err, output)

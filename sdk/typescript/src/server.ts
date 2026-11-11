@@ -193,7 +193,7 @@ export class FastCAS {
   }
   async verifyAccessToken(raw: string, audience: string, scopes: string[] = []): Promise<JWTPayload> {
     const claims = await this.verify(raw, audience);
-    if (claims.token_use !== "access" || typeof claims.scope !== "string") throw new FastCASError("wrong_token_type", "An access token is required", 401);
+    if (claims.token_use !== "access" || typeof claims.scope !== "string" || !claims.sub || !Number.isFinite(claims.iat) || claims.iat! > Date.now() / 1000 + 60) throw new FastCASError("wrong_token_type", "An access token is required", 401);
     const granted = new Set(claims.scope.split(" "));
     if (scopes.some(scope => !granted.has(scope))) throw new FastCASError("insufficient_scope", "Required permission missing", 403);
     return claims;

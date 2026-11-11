@@ -48,7 +48,7 @@ S = {
     "Client": obj({"id": string(), "name": string(), "redirect_uris": ref("NullableStringList"), "post_logout_redirect_uris": ref("NullableStringList"), "scopes": ref("NullableStringList"), "resources": ref("NullableStringList"), "grant_types": ref("NullableStringList"), "public": {"type": "boolean"}, "development": {"type": "boolean"}, "backchannel_logout_uri": string(format="uri"), "events_uri": string(format="uri")}, ("id", "name", "redirect_uris", "post_logout_redirect_uris", "scopes", "resources", "grant_types", "public", "development")),
     "ServiceAccount": obj({"client": ref("Client"), "active": {"type": "boolean"}, "created_at": string(format="date-time")}, ("client", "active", "created_at")),
     "ExchangePolicy": obj({"caller_client": string(), "target_client": string(), "resource": string(), "scope": string(), "active": {"type": "boolean"}}, ("caller_client", "target_client", "resource", "scope", "active")),
-    "AuditEvent": obj({"id": integer(format="int64"), "actor": string(), "action": string(), "target": string(), "created_at": string(format="date-time")}, ("id", "actor", "action", "target", "created_at")),
+    "AuditEvent": obj({"id": integer(format="int64"), "actor": string(), "action": string(), "target": string(), "created_at": string(format="date-time"), "request_id": string(), "result": string(enum=["unknown", "success", "failure"])}, ("id", "actor", "action", "target", "created_at", "request_id", "result")),
     "OutboxEvent": obj({"id": string(), "client_id": string(), "kind": string(), "attempts": integer(), "last_status": {"type": ["integer", "null"]}, "created_at": string(format="date-time"), "available_at": string(format="date-time"), "dead_at": {"type": ["string", "null"], "format": "date-time"}, "delivered_at": {"type": ["string", "null"], "format": "date-time"}}, ("id", "client_id", "kind", "attempts", "created_at", "available_at")),
     "OutboxAttempt": obj({"id": integer(format="int64"), "attempt": integer(), "outcome": string(enum=["delivered", "http_error", "transport_error", "configuration_error", "signing_error"]), "http_status": {"type": ["integer", "null"]}, "duration_ms": integer(minimum=0), "finished_at": string(format="date-time")}, ("id", "attempt", "outcome", "duration_ms", "finished_at")),
     "BrowserSession": obj({"id": string(), "identity_id": string(), "authenticated_at": string(format="date-time"), "expires_at": string(format="date-time")}, ("id", "identity_id", "authenticated_at", "expires_at")),
@@ -138,6 +138,7 @@ add("/api/v1/link-intents/{id}/activate", "post", "activateLink", "Activate a lo
 add("/api/v1/account-links/resolve", "get", "resolveLink", "Resolve this application's active binding", basic, link, params=({"name": "subject", "in": "query", "required": True, "schema": string()},))
 add("/api/v1/account-links/{id}", "get", "getLink", "Read this application's binding", basic, link, params=("id",))
 add("/api/v1/account-links/{id}/revoke", "post", "revokeLink", "Revoke a binding at the expected version", basic, link, params=("id", {"name": "If-Match", "in": "header", "required": True, "schema": string(), "description": "Decimal link version, optionally wrapped in quotes."}))
+PATHS["/api/v1/account-links/{id}/revoke"]["post"]["responses"]["412"] = {"description": "Link version changed; reload before retrying", "content": {"application/json": {"schema": ref("Error")}}}
 PATHS["/api/v1/account-links/{id}/revoke"]["post"]["responses"]["428"] = {"description": "If-Match version required", "content": {"application/json": {"schema": ref("Error")}}}
 
 add("/api/v1/register", "post", "redeemInvitation", "Redeem a FastCAS invitation", public, response(ref("RedeemedCredential")), body="RedeemCredential")
@@ -179,7 +180,12 @@ add("/api/v1/admin/service-accounts/{id}/status", "post", "setServiceAccountStat
 add("/api/v1/admin/service-accounts/{id}/rotate-secret", "post", "rotateServiceAccountSecret", "Rotate a service credential", admin, response(ref("RotatedSecret")), body="RotateSecret", params=("id",))
 add("/api/v1/admin/exchange-policies", "get", "listExchangePolicies", "List token-exchange routes", admin, response(array(ref("ExchangePolicy"))))
 add("/api/v1/admin/exchange-policies", "post", "setExchangePolicy", "Set a token-exchange route", admin, response(None, 204), body="ExchangePolicy")
-add("/api/v1/admin/audit-events", "get", "listAuditEvents", "List audit events, newest first", admin, response(array(ref("AuditEvent"))), params=({"name": "before", "in": "query", "schema": integer(minimum=1), "description": "Return events with IDs lower than this cursor."},))
+add("/api/v1/admin/audit-events", "get", "listAuditEvents", "Filter audit events, newest first", admin, response(array(ref("AuditEvent"))), params=(
+    {"name": "before", "in": "query", "schema": integer(minimum=1), "description": "Return events with IDs lower than this cursor; maximum 100 per page. Preserve filters on subsequent pages."},
+    *({"name": name, "in": "query", "schema": string(maxLength=200), "description": "Exact match after trimming whitespace; at most 200 UTF-8 bytes. Empty means no filter."} for name in ("action", "actor", "target")),
+    {"name": "since", "in": "query", "schema": string(format="date-time"), "description": "Inclusive start time in RFC3339 with timezone."},
+    {"name": "until", "in": "query", "schema": string(format="date-time"), "description": "Exclusive end time in RFC3339 with timezone; must be later than since."},
+))
 add("/api/v1/admin/outbox", "get", "listOutbox", "List outbox delivery status", admin, response(ref("OutboxPage")), params=({"name": "before", "in": "query", "schema": string()}, {"name": "state", "in": "query", "schema": string(enum=["dead", "all"]), "description": "Omitting state returns dead-letter items."}))
 add("/api/v1/admin/outbox/{id}/attempts", "get", "listOutboxAttempts", "List up to 100 recent delivery attempts without event payloads or signed tokens", admin, response(ref("OutboxAttempts")), params=("id",))
 add("/api/v1/admin/outbox/{id}/retry", "post", "retryOutbox", "Retry a dead-letter event", admin, response(ref("Queued")), params=("id",))

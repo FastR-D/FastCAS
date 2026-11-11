@@ -15,37 +15,37 @@ async function authorize(target){
 async function me(target){return target.evaluate(()=>fetch('/api/auth/me',{headers:{authorization:`Bearer ${localStorage.getItem('fastwrite.session-token')}`}}).then(response=>response.json()))}
 try{
  await page.goto(origin+'/projects',{waitUntil:'domcontentloaded'});
- await page.getByRole('button',{name:'Sign in'}).first().click();
- await page.getByRole('dialog',{name:'Sign in'}).waitFor();
- await page.getByLabel('Email').fill('alice@example.test');
- await page.getByLabel('Password').fill('local-password-contract-32-characters');
- await page.getByRole('dialog',{name:'Sign in'}).getByRole('button',{name:'Sign in',exact:true}).click();
- await page.getByRole('button',{name:'Account authentication'}).waitFor();
+ await page.getByRole('button',{name:'登录'}).first().click();
+ await page.getByRole('dialog',{name:'登录'}).waitFor();
+ await page.getByLabel('邮箱').fill('alice@example.test');
+ await page.getByLabel('密码').fill('local-password-contract-32-characters');
+ await page.getByRole('dialog',{name:'登录'}).getByRole('button',{name:'登录',exact:true}).click();
+ await page.getByRole('button',{name:'账号认证'}).waitFor();
  assert.equal((await me(page)).id,userId);
  await page.getByText('Browser preserved writing project').waitFor();
- await page.getByRole('button',{name:'Account authentication'}).click();
- await page.getByText('This account is not authenticated with FastCAS.').waitFor();
- await page.getByLabel('Confirm your FastWrite password').fill('local-password-contract-32-characters');
- await page.getByRole('button',{name:'Authenticate this account with FastCAS'}).click();
+ await page.getByRole('button',{name:'账号认证'}).click();
+ await page.getByText('此账号尚未通过 FastCAS 认证。').waitFor();
+ await page.getByLabel('确认 FastWrite 密码').fill('local-password-contract-32-characters');
+ await page.getByRole('button',{name:'使用 FastCAS 认证此账号'}).click();
  await authorize(page);
- await page.getByRole('button',{name:'Account authentication'}).waitFor();
- await page.getByRole('button',{name:'Account authentication'}).click();
- await page.getByText('This account is authenticated with FastCAS.').waitFor();
+ await page.getByRole('button',{name:'账号认证'}).waitFor();
+ await page.getByRole('button',{name:'账号认证'}).click();
+ await page.getByText('此账号已通过 FastCAS 认证。').waitFor();
 
  const second=await browser.newContext({viewport:{width:1440,height:900}});
  try{
   const login=await second.newPage();login.setDefaultTimeout(10000);
   await login.route('**/api/auth/refresh',async route=>{await new Promise(resolve=>setTimeout(resolve,1200));await route.continue()});
   await login.goto(origin+'/projects',{waitUntil:'domcontentloaded'});
-  await login.getByRole('button',{name:'Sign in'}).first().click();
-  await login.getByRole('button',{name:'Continue with FastCAS'}).click();
+  await login.getByRole('button',{name:'登录'}).first().click();
+  await login.getByRole('button',{name:'使用 FastCAS 登录'}).click();
   await authorize(login);
-  await login.getByRole('button',{name:'Account authentication'}).waitFor();
+  await login.getByRole('button',{name:'账号认证'}).waitFor();
   assert.equal((await me(login)).id,userId,'FastCAS entered another FastWrite account');
   await login.getByText('Browser preserved writing project').waitFor();
-  await page.getByLabel('Confirm your FastWrite password').fill('local-password-contract-32-characters');
-  await page.getByRole('button',{name:'Remove FastCAS authentication'}).click();
-  await page.getByText('This account is not authenticated with FastCAS.').waitFor();
+  await page.getByLabel('确认 FastWrite 密码').fill('local-password-contract-32-characters');
+  await page.getByRole('button',{name:'移除 FastCAS 认证'}).click();
+  await page.getByText('此账号尚未通过 FastCAS 认证。').waitFor();
   assert.equal(await login.evaluate(()=>fetch('/api/auth/me',{headers:{authorization:`Bearer ${localStorage.getItem('fastwrite.session-token')}`}}).then(response=>response.status)),401);
   assert.equal((await me(page)).id,userId,'local login lost after unlink');
   assert.equal(await page.evaluate(id=>fetch(`/api/projects/${id}`,{headers:{authorization:`Bearer ${localStorage.getItem('fastwrite.session-token')}`}}).then(response=>response.status),projectId),200);
