@@ -13,17 +13,23 @@ export function takeInitialCredential(): InitialCredential {
   const flow = query.get("flow");
   const token = query.get("token");
   if (!flow && !token) return null;
+  query.delete("flow");
+  query.delete("token");
+  const search = query.toString();
   window.history.replaceState(
     window.history.state,
     "",
-    window.location.pathname + window.location.hash,
+    window.location.pathname + (search ? "?" + search : "") + window.location.hash,
   );
   return flow === "invite" || flow === "recovery" || flow === "mfa_reset"
     ? { flow, token: token ?? "" }
     : null;
 }
 
-export function Guest({ initial }: { initial: InitialCredential }) {
+export function Guest({ initial, onLogin }: {
+  initial: InitialCredential;
+  onLogin: () => void;
+}) {
   const [flow, setFlow] = useState<Flow>(initial?.flow ?? "invite");
   const [token, setToken] = useState(initial?.token ?? "");
   const [name, setName] = useState("");
@@ -85,72 +91,71 @@ export function Guest({ initial }: { initial: InitialCredential }) {
     }
   }
   return (
-    <div className="grid">
-      <section>
-        <h2>登录 FastCAS</h2>
-        <p>已有项目账号仍可使用项目原有方式登录。</p>
-        <a className="primary" href="/login">
-          前往登录
-        </a>
-      </section>
-      <section>
-        <h2>
-          {flow === "invite"
-            ? "接受邀请"
-            : flow === "recovery"
-              ? "恢复 FastCAS 密码"
-              : "重置 FastCAS 双重验证"}
-        </h2>
-        {complete ? (
-          <>
-            <Alert tone="success">
-              {flow === "invite"
-                ? "账号已创建"
-                : flow === "recovery"
-                  ? "密码已更新"
-                  : "双重验证已重置"}
-              。现在可以登录 FastCAS。
-            </Alert>
-            <a href="/login">前往登录</a>
-          </>
-        ) : (
-          <>
-            <p>此操作仅针对 FastCAS 身份。各项目账号和本地登录保持独立。</p>
-            <div className="flow-choices">
-              <Button
-                type="button"
-                disabled={busy}
-                aria-current={flow === "invite" ? "page" : undefined}
-                onClick={() => {
-                  selectFlow("invite");
-                }}
-              >
-                <Icon icon={UserPlus} />
-                邀请注册
-              </Button>
-              <Button
-                type="button"
-                disabled={busy}
-                aria-current={flow === "recovery" ? "page" : undefined}
-                onClick={() => {
-                  selectFlow("recovery");
-                }}
-              >
-                <Icon icon={KeyRound} />
-                密码恢复
-              </Button>
-              <Button
-                type="button"
-                disabled={busy}
-                aria-current={flow === "mfa_reset" ? "page" : undefined}
-                onClick={() => {
-                  selectFlow("mfa_reset");
-                }}
-              >
-                <Icon icon={ShieldCheck} />
-                双重验证重置
-              </Button>
-            </div>
+    <div className="registration-flow">
+      <h2>
+        {flow === "invite"
+          ? "接受邀请"
+          : flow === "recovery"
+            ? "恢复 FastCAS 密码"
+            : "重置 FastCAS 双重验证"}
+      </h2>
+      {complete ? (
+        <>
+          <Alert tone="success">
+            {flow === "invite"
+              ? "账号已创建"
+              : flow === "recovery"
+                ? "密码已更新"
+                : "双重验证已重置"}
+            。现在可以登录 FastCAS。
+          </Alert>
+          <a
+            href="/login"
+            onClick={(event) => {
+              event.preventDefault();
+              onLogin();
+            }}
+          >
+            前往登录
+          </a>
+        </>
+      ) : (
+        <>
+          <div className="flow-choices">
+            <Button
+              type="button"
+              disabled={busy}
+              aria-current={flow === "invite" ? "page" : undefined}
+              onClick={() => {
+                selectFlow("invite");
+              }}
+            >
+              <Icon icon={UserPlus} />
+              邀请注册
+            </Button>
+            <Button
+              type="button"
+              disabled={busy}
+              aria-current={flow === "recovery" ? "page" : undefined}
+              onClick={() => {
+                selectFlow("recovery");
+              }}
+            >
+              <Icon icon={KeyRound} />
+              密码恢复
+            </Button>
+            <Button
+              type="button"
+              disabled={busy}
+              aria-current={flow === "mfa_reset" ? "page" : undefined}
+              onClick={() => {
+                selectFlow("mfa_reset");
+              }}
+            >
+              <Icon icon={ShieldCheck} />
+              双重验证重置
+            </Button>
+          </div>
             <form onSubmit={(e) => void redeem(e)}>
               <label>
                 一次性凭证
@@ -211,7 +216,6 @@ export function Guest({ initial }: { initial: InitialCredential }) {
             </form>
           </>
         )}
-      </section>
     </div>
   );
 }

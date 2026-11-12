@@ -37,6 +37,9 @@ func TestConsoleRoutingAndSecurityHeaders(t *testing.T) {
 		if rec.Code != tc.want {
 			t.Errorf("%s %s: got %d want %d", tc.method, tc.path, rec.Code, tc.want)
 		}
+		if tc.path == "/" && rec.Header().Get("Location") != "/login" {
+			t.Error("guest root must redirect to login")
+		}
 		if strings.HasPrefix(tc.path, "/console/") && rec.Header().Get("Content-Security-Policy") == "" {
 			t.Error("missing CSP")
 		}
@@ -89,5 +92,11 @@ func TestConsoleAuthManifestValidation(t *testing.T) {
 	}
 	if _, err := httpapi.Console(server, dir); err != nil {
 		t.Fatal(err)
+	}
+	if err := os.Remove(filepath.Join(dir, "assets/theme-init.js")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := httpapi.Console(server, dir); err == nil {
+		t.Fatal("missing theme bootstrap accepted")
 	}
 }

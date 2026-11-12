@@ -13,8 +13,6 @@ import { Shell } from "./Shell";
 import { Admin } from "./Admin";
 import { Delegations } from "./Delegations";
 import { Integration } from "./Integration";
-import { Guest, takeInitialCredential } from "./Guest";
-const initialCredential = takeInitialCredential();
 type Link = {
   id: string;
   client_id: string;
@@ -97,8 +95,20 @@ function App() {
     return response.status === 204 ? undefined : response.json();
   }
   async function refresh() {
-    setMe(await api<Me>("/me"));
+    try {
+      setMe(await api<Me>("/me"));
+    } catch (error) {
+      if (error instanceof Error && error.message === "请先登录或重新验证身份") {
+        window.location.replace("/login" + window.location.search);
+      }
+      throw error;
+    }
   }
+  const wasAuthenticated = useRef(false);
+  useEffect(() => {
+    if (me) wasAuthenticated.current = true;
+    else if (wasAuthenticated.current) window.location.replace("/login");
+  }, [me]);
   useEffect(() => {
     refresh()
       .catch((e) => {
@@ -182,7 +192,7 @@ function App() {
       {loading ? (
         <Loading label="正在读取账号…" />
       ) : !me ? (
-        <Guest initial={initialCredential} />
+        <Loading label="正在前往登录…" />
       ) : (
         <>
           {page === "security" && (
@@ -193,7 +203,7 @@ function App() {
               run={run}
               refresh={refresh}
               onNotice={setNotice}
-              onPasswordChanged={() => setMe(undefined)}
+              onPasswordChanged={() => window.location.replace("/login?notice=password-changed")}
             />
           )}
           {page === "links" && (

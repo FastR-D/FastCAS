@@ -74,12 +74,55 @@ a {
 .auth-toolbar .fastui-select {
   max-width: 108px;
 }
-.auth-note {
-  border-top: 1px solid var(--fastui-border);
-  padding-top: 20px;
-  margin-top: 28px;
-  font-size: 11px;
-  color: var(--fastui-muted);
+[hidden] {
+  display: none !important;
+}
+.auth-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--fastui-border);
+  margin-top: 24px;
+}
+.auth-tabs [role="tab"] {
+  flex: 1;
+  padding: 12px;
+  text-align: center;
+  text-decoration: none;
+  color: var(--fastui-secondary);
+  border-bottom: 2px solid transparent;
+}
+.auth-tabs [aria-selected="true"] {
+  color: var(--fastui-focus);
+  border-bottom-color: var(--fastui-focus);
+}
+.flow-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 20px 0;
+}
+.flow-choices .fastui-button {
+  margin: 0;
+  padding: 8px 10px;
+  font-size: 12px;
+}
+.flow-choices [aria-current] {
+  color: var(--fastui-focus);
+  background: var(--fastui-selected);
+  border-color: var(--fastui-focus);
+}
+.app-icon {
+  flex-shrink: 0;
+}
+.fastui-alert {
+  margin: 20px 0;
+}
+@media (max-width: 480px) {
+  body {
+    padding: 20px 12px;
+  }
+  main {
+    padding: 24px;
+  }
 }
 .auth-code {
   font-family: ui-monospace, monospace;

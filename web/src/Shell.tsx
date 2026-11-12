@@ -122,14 +122,6 @@ export function Shell({
                   </div>
                 ))}
             </nav>
-            <div className="sidebar-note">
-              <Mark />
-              <p>
-                一次认证，安心连接。
-                <br />
-                <small>各项目保留独立账号与权限。</small>
-              </p>
-            </div>
           </>
         ) : (
           <div className="guest-aside">
@@ -189,10 +181,6 @@ export function Shell({
         <main id="content" tabIndex={-1}>
           {children}
         </main>
-        <footer>
-          <span>FastCAS · FastR-D</span>
-          <span>可选认证，独立账号</span>
-        </footer>
       </div>
     </div>
   );

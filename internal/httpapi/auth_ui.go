@@ -91,8 +91,7 @@ func authTemplate(name, body string) *template.Template {
 {{define "auth-head"}}<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>{{.Title}} · FastCAS</title>
 {{if .Assets.Bootstrap}}<script src="{{.Assets.Bootstrap}}"></script>{{end}}{{range .Assets.Styles}}<link rel="stylesheet" href="{{.}}">{{end}}{{if .Assets.Script}}<script type="module" src="{{.Assets.Script}}"></script>{{end}}{{end}}
 {{define "auth-toolbar"}}<div class="auth-toolbar"><span class="auth-brand">FASTR-D / IDENTITY</span>{{if .Assets.Script}}<select class="fastui-select fastui-select--sm" data-theme-select aria-label="界面主题"><option value="system">跟随系统</option><option value="light">浅色主题</option><option value="dark">深色主题</option></select>{{end}}</div>{{end}}
-{{define "auth-footer"}}<p class="auth-note">FastCAS · 可选认证，独立账号<br>各项目的账号、内容和权限由项目独立管理。</p>{{end}}
 ` + body))
 }
 
-var deviceCompleteTemplate = authTemplate("device-complete", `<!doctype html><html lang="zh-CN"><head>{{template "auth-head" .}}</head><body><main>{{template "auth-toolbar" .}}<h1>设备确认完成</h1><p>设备请求已处理，可返回设备继续操作。</p><a href="/console/">返回账号中心</a>{{template "auth-footer" .}}</main></body></html>`)
+var deviceCompleteTemplate = authTemplate("device-complete", `<!doctype html><html lang="zh-CN" data-fastui-theme="dark"><head>{{template "auth-head" .}}</head><body><main>{{template "auth-toolbar" .}}<h1>设备确认完成</h1><p>设备请求已处理，可返回设备继续操作。</p><a href="/console/">返回账号中心</a></main></body></html>`)

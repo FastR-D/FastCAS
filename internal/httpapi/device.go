@@ -29,11 +29,11 @@ func (s *Server) deviceFormProof(csrf, code string) string {
 	return base64.RawURLEncoding.EncodeToString(mac.Sum(nil))
 }
 
-var deviceTemplate = authTemplate("device", `<!doctype html><html lang="zh-CN"><head>{{template "auth-head" .}}</head><body><main>{{template "auth-toolbar" .}}<h1>确认设备</h1>
+var deviceTemplate = authTemplate("device", `<!doctype html><html lang="zh-CN" data-fastui-theme="dark"><head>{{template "auth-head" .}}</head><body><main>{{template "auth-toolbar" .}}<h1>确认设备</h1>
 {{if .User}}<p>当前 FastCAS 身份：{{.User.Name}}</p>{{if .Request}}<p>应用：{{.Request.ClientName}}</p><p>权限：{{range .Request.Scopes}}{{.}} {{end}}</p><p>请核对设备屏幕上的代码 <strong class="auth-code">{{.Code}}</strong>，仅在您正主动配对自己的设备时继续。</p>
 <form method="post" action="/device"><input type="hidden" name="csrf" value="{{.CSRF}}"><input type="hidden" name="user_code" value="{{.Code}}"><button class="fastui-button fastui-button--primary" name="decision" value="approve">允许这台设备</button><button class="fastui-button" name="decision" value="deny">拒绝</button></form>
 {{else}}<form method="get" action="/device"><label>设备代码 <input class="fastui-input" name="user_code" required maxlength="9" autocomplete="off"></label><button class="fastui-button fastui-button--primary">检查</button></form>{{end}}
-{{else}}<p>请先登录 FastCAS，然后返回此页输入设备上的代码。</p><a href="/login{{if .Code}}?return_device={{.Code}}{{end}}">登录</a>{{end}}{{template "auth-footer" .}}</main></body></html>`)
+{{else}}<p>请先登录 FastCAS，然后返回此页输入设备上的代码。</p><a href="/login{{if .Code}}?return_device={{.Code}}{{end}}">登录</a>{{end}}</main></body></html>`)
 
 func (s *Server) devicePage(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Referrer-Policy", "same-origin")

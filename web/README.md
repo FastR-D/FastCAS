@@ -15,9 +15,9 @@ pnpm run build
 
 审计支持操作名称、执行者 ID、目标 ID 的精确匹配和开始/结束时间组合筛选；分页保留已应用条件，重置与刷新从首屏重新查询。输入时间使用浏览器时区，发送时转为 UTC；开始时间包含、结束时间排除。后台迁移 `015_audit_filters.sql` 为检索与分页增加索引。
 
-主题支持浅色、深色和跟随系统，使用 foundation 的颜色模式控制器；仅 `fastcas.color-mode` 偏好写入 localStorage。同源经典脚本 `assets/theme-init.js` 在 head 阻塞初始化首屏主题，Shell 和原生认证页复用同一 controller，系统或跨标签主题变化保持表单 DOM、草稿和焦点。一次性凭证、客户端密钥、恢复码和认证器密钥只保存在当前页面内存中；离开对应页面会卸载组件并清空显示，管理页之间不会复用密钥。查询参数中的邀请/恢复凭证在 React 发出请求前从地址栏清除。凭证须通过可信渠道私密交付。
+主题默认使用深色，支持浅色、深色和跟随系统，使用 foundation 的颜色模式控制器；仅 `fastcas.color-mode` 偏好写入 localStorage。同源经典脚本 `assets/theme-init.js` 在 head 阻塞初始化首屏主题，Shell 和原生认证页复用同一 controller，系统或跨标签主题变化保持表单 DOM、草稿和焦点。一次性凭证、客户端密钥、恢复码和认证器密钥只保存在当前页面内存中；离开对应页面会卸载组件并清空显示，管理页之间不会复用密钥。查询参数中的邀请/恢复凭证在 React 发出请求前从地址栏清除。凭证须通过可信渠道私密交付。
 
-公开表单入口为 `/console/?flow=invite`、`?flow=recovery`、`?flow=mfa_reset`，支持手动凭证或 `token` 查询参数。切换流程清空原凭证与密码。成功后提示独立登录，各项目账号不会自动创建或合并。
+未登录访问 `/`、`/console` 或 `/console/` 会直接跳转 `/login`。登录页提供登录和注册标签，注册标签保留邀请注册、密码恢复、双重验证重置三种流程。公开表单入口为 `/login?flow=invite`、`?flow=recovery`、`?flow=mfa_reset`，支持手动凭证或 `token` 查询参数；原 `/console/?flow=…` 链接继续转到对应登录页流程。认证器设置使用本地生成的二维码，同时保留手动导入 URI。切换流程清空原凭证与密码。成功后提示独立登录，各项目账号不会自动创建或合并。
 
 本地开发：`pnpm run dev -- --port 4173`。Vite 将 `/api`、`/login`、`/device` 与 discovery 代理到 `127.0.0.1:8900`。原生认证页的完整样式与主题联调应使用生产构建和 `FASTCAS_UI_DIR`。
 

@@ -188,27 +188,6 @@ dd {
 .nav-group [aria-current="page"] .nav-icon {
   color: inherit;
 }
-.sidebar-note {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-top: auto;
-  border-top: 1px solid var(--fastui-border);
-  padding: 12px 8px 0;
-}
-.sidebar-note svg {
-  width: 26px;
-  flex-shrink: 0;
-  color: var(--fastui-muted);
-}
-.sidebar-note p {
-  font-size: 11px;
-  margin: 0;
-}
-.sidebar-note small {
-  font-size: 10px;
-  color: var(--fastui-muted);
-}
 .workspace {
   min-width: 0;
   display: flex;
@@ -307,6 +286,28 @@ main {
 }
 .grid > section:last-child:nth-child(odd) {
   grid-column: 1/-1;
+}
+.security-column {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  min-width: 0;
+}
+.security-column > section {
+  margin: 0;
+}
+.authenticator-qr {
+  width: fit-content;
+  max-width: 100%;
+  margin: 20px 0;
+  background: #fff;
+  border-radius: var(--fastui-radius-control);
+  overflow: hidden;
+}
+.authenticator-qr svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
 }
 .grid + .grid,
 .grid + section {
@@ -581,15 +582,6 @@ article:last-of-type {
 .primary:hover {
   background: var(--fastui-primary-hover);
 }
-footer {
-  display: flex;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 20px 40px;
-  border-top: 1px solid var(--fastui-border);
-  font-size: 10px;
-  color: var(--fastui-muted);
-}
 .skip-link {
   position: fixed;
   left: 12px;
@@ -659,11 +651,17 @@ footer {
   main {
     padding-top: 42px;
   }
-  .grid {
+  .grid,
+  .security-column {
     gap: 26px;
   }
   section {
     padding: 30px;
+  }
+}
+@media (max-width: 900px) {
+  .security-grid {
+    grid-template-columns: 1fr;
   }
 }
 @media (prefers-reduced-motion: reduce) {

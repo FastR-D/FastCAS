@@ -181,16 +181,32 @@ func (s *Server) client(w http.ResponseWriter, r *http.Request) (string, bool) {
 	return id, true
 }
 
-var loginTemplate = authTemplate("login", `<!doctype html><html lang="zh-CN"><head>{{template "auth-head" .}}</head><body><main>{{template "auth-toolbar" .}}<h1>FastCAS</h1>
+var loginTemplate = authTemplate("login", `<!doctype html><html lang="zh-CN" data-fastui-theme="dark"><head>{{template "auth-head" .}}</head><body><main>{{template "auth-toolbar" .}}<h1>FastCAS</h1>
 {{if .User}}<p>已登录：{{.User.Name}}</p><h2>授权 {{.Client.Name}}</h2>
 {{if .Link}}<p>为项目账号 {{.Link.LocalRef}} 完成 FastCAS 认证。项目密码和内容不会交给 FastCAS。</p>{{else}}<p>允许该应用读取以下身份信息并登录：</p>{{end}}<p>{{.Scopes}}</p>
 <form method="post" action="/login"><input type="hidden" name="csrf" value="{{.CSRF}}"><input type="hidden" name="auth_request_id" value="{{.RequestID}}"><button class="fastui-button fastui-button--primary" name="action" value="approve">确认并继续</button></form>
-{{else}}<p>使用 FastCAS 登录。各项目原有登录方式仍然可用。</p>
+{{else}}
+{{if .Assets.Script}}
+<div class="auth-tabs" role="tablist" aria-label="账号服务">
+<a id="login-tab" role="tab" data-auth-tab="login" aria-controls="login-panel" aria-selected="{{if .Register}}false{{else}}true{{end}}" tabindex="{{if .Register}}-1{{else}}0{{end}}" href="{{.LoginURL}}">登录</a>
+<a id="register-tab" role="tab" data-auth-tab="register" aria-controls="register-panel" aria-selected="{{if .Register}}true{{else}}false{{end}}" tabindex="{{if .Register}}0{{else}}-1{{end}}" href="{{.RegisterURL}}">注册</a>
+</div>
+{{end}}
+<div id="login-panel"{{if .Assets.Script}} role="tabpanel" data-auth-panel="login" aria-labelledby="login-tab"{{end}}{{if .Register}} hidden{{end}}>
+<h2>登录 FastCAS</h2>
+{{if .PasswordChanged}}<div class="fastui-alert fastui-alert--success" role="status">FastCAS 密码已更新，请使用新密码重新登录</div>{{end}}
 <form method="post" action="/login"><input type="hidden" name="csrf" value="{{.CSRF}}"><input type="hidden" name="auth_request_id" value="{{.RequestID}}">
 <label>邮箱 <input class="fastui-input" name="email" type="email" required autocomplete="username"></label>
 <label>密码 <input class="fastui-input" name="password" type="password" required autocomplete="current-password"></label>
 <label>动态验证码或恢复码（已启用时） <input class="fastui-input" name="mfa_code" autocomplete="one-time-code"></label>
-<input type="hidden" name="return_device" value="{{.ReturnDevice}}"><button class="fastui-button fastui-button--primary" name="action" value="login">登录</button></form>{{end}}{{template "auth-footer" .}}</main></body></html>`)
+<input type="hidden" name="return_device" value="{{.ReturnDevice}}"><button class="fastui-button fastui-button--primary" name="action" value="login">登录</button></form>
+</div>
+{{if .Assets.Script}}
+<div id="register-panel" role="tabpanel" data-auth-panel="register" aria-labelledby="register-tab"{{if not .Register}} hidden{{end}}>
+<div id="registration-root"></div>
+<noscript><p>邀请注册、密码恢复与双重验证重置需要启用 JavaScript。</p></noscript>
+</div>
+{{end}}{{end}}</main></body></html>`)
 
 func (s *Server) loginPage(w http.ResponseWriter, r *http.Request) {
 	// A native form POST from a page with no-referrer is sent by Chromium with
@@ -200,6 +216,19 @@ func (s *Server) loginPage(w http.ResponseWriter, r *http.Request) {
 	csrf := core.RandomToken()
 	s.setCookie(w, "fastcas_form", csrf, 300)
 	data := map[string]any{"Title": "登录", "Assets": s.authAssets, "CSRF": csrf, "RequestID": r.URL.Query().Get("auth_request_id"), "ReturnDevice": safeDeviceCode(r.URL.Query().Get("return_device"))}
+	query := r.URL.Query()
+	data["PasswordChanged"] = query.Get("notice") == "password-changed"
+	flow := query.Get("flow")
+	data["Register"] = s.authAssets.Script != "" && (query.Get("tab") == "register" || flow == "invite" || flow == "recovery" || flow == "mfa_reset")
+	query.Del("flow")
+	query.Del("token")
+	query.Del("tab")
+	data["LoginURL"] = "/login"
+	if len(query) > 0 {
+		data["LoginURL"] = "/login?" + query.Encode()
+	}
+	query.Set("tab", "register")
+	data["RegisterURL"] = "/login?" + query.Encode()
 	if id := r.URL.Query().Get("auth_request_id"); id != "" {
 		request, err := s.Store.AuthRequestByID(r.Context(), id)
 		if err != nil {

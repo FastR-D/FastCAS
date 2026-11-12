@@ -17,6 +17,7 @@ const browser = await chromium.launch({
 });
 const context = await browser.newContext({
   viewport: { width: 1440, height: 1000 },
+  colorScheme: "light",
 });
 const page = await context.newPage();
 const uiErrors = [];
@@ -75,10 +76,11 @@ async function firstPaint(path, stored, system, expected, denyStorage = false) {
       const controller = await target.evaluateHandle(() => window.fastCASColorMode);
       assert.equal(await target.locator("html").getAttribute("data-fastui-theme"), expected);
       release();
+      await target.waitForLoadState("networkidle");
       await target.getByLabel("界面主题").waitFor();
       assert.equal(await target.evaluate((initial) => window.fastCASColorMode === initial, controller), true,
         "application replaced the first-paint controller");
-      if (path === "/console/") {
+      if (path.includes("tab=register")) {
         await target.getByLabel("一次性凭证").fill("unsubmitted-draft-token");
         await target.getByLabel("姓名").fill("主题草稿");
         await target.getByLabel("新密码", { exact: true }).fill("draft-password-123");
@@ -158,19 +160,45 @@ function totp(uri) {
   return String(number % 1000000).padStart(6, "0");
 }
 try {
-  for (const path of ["/console/", "/login"]) {
+  for (const path of ["/", "/console", "/console/"]) {
+    for (const method of ["GET", "HEAD"]) {
+      const response = await context.request.fetch(origin + path, { method, maxRedirects: 0 });
+      assert.equal(response.status(), 307);
+      assert.equal(response.headers().location, "/login", `${method} ${path} did not redirect directly to login`);
+    }
+  }
+  await page.goto(origin, { waitUntil: "networkidle" });
+  assert.equal(new URL(page.url()).pathname, "/login", "guest root did not redirect to login");
+  assert.equal(await page.locator("html").getAttribute("data-fastui-theme"), "dark", "default theme followed light system");
+  await page.getByRole("tab", { name: "注册", exact: true }).click();
+  await page.getByRole("button", { name: "邀请注册", exact: true }).waitFor();
+  await page.getByRole("button", { name: "密码恢复", exact: true }).click();
+  await page.getByRole("heading", { name: "恢复 FastCAS 密码" }).waitFor();
+  await page.getByRole("button", { name: "双重验证重置", exact: true }).click();
+  await page.getByRole("heading", { name: "重置 FastCAS 双重验证" }).waitFor();
+  await screenshot("login-register-dark");
+  await page.getByRole("tab", { name: "登录", exact: true }).focus();
+  await page.keyboard.press("End");
+  assert.equal(await page.getByRole("tab", { name: "注册", exact: true }).getAttribute("aria-selected"), "true");
+  await page.keyboard.press("ArrowRight");
+  await page.getByRole("heading", { name: "登录 FastCAS" }).waitFor();
+  await screenshot("login-desktop-dark");
+  for (const path of ["/login?tab=register", "/login"]) {
     await firstPaint(path, "dark", "light", "dark");
     await firstPaint(path, "light", "dark", "light");
-    await firstPaint(path, "invalid", "dark", "dark");
-    await firstPaint(path, null, "light", "light");
-    await firstPaint(path, null, "dark", "dark", true);
+    await firstPaint(path, "system", "light", "light");
+    await firstPaint(path, "system", "dark", "dark");
+    await firstPaint(path, "invalid", "light", "dark");
+    await firstPaint(path, null, "light", "dark");
+    await firstPaint(path, null, "light", "dark", true);
   }
   await page.goto(
-    `${origin}/console/?flow=invite&token=${encodeURIComponent(invite)}`,
+    `${origin}/login?flow=invite&token=${encodeURIComponent(invite)}`,
     { waitUntil: "networkidle" },
   );
   await page.waitForURL((url) => !url.search);
   assert.equal(new URL(page.url()).search, "", "invite token remained in URL");
+  assert.equal(await page.getByRole("tab", { name: "注册", exact: true }).getAttribute("aria-selected"), "true");
   await page.getByLabel("姓名").fill("Invited Reader");
   await page
     .getByLabel("新密码", { exact: true })
@@ -187,6 +215,7 @@ try {
     "6px",
     "login did not load npm-built FastUI controls",
   );
+  await page.getByLabel("界面主题").selectOption("light");
   await screenshot("login-desktop-light");
   const noScriptContext = await browser.newContext({
     javaScriptEnabled: false,
@@ -222,6 +251,14 @@ try {
   assert.equal(await page.getByRole("button", { name: "调用策略", exact: true }).count(), 0);
   assert.equal(await page.getByRole("button", { name: "失败投递", exact: true }).count(), 0);
   await preserveSecurityDraft();
+  const authenticatedRoot = await context.request.get(origin, { maxRedirects: 0 });
+  assert.equal(authenticatedRoot.headers().location, "/console/", "authenticated root did not open console");
+  const legacyFlow = await context.request.get(`${origin}/console/?flow=recovery&token=compatibility-check`, { maxRedirects: 0 });
+  assert.equal(legacyFlow.headers().location, "/login?flow=recovery&token=compatibility-check", "authenticated legacy recovery link did not move to login");
+  const passwordCard = await page.getByRole("heading", { name: "修改 FastCAS 密码" }).locator("..").boundingBox();
+  const identityCard = await page.getByRole("heading", { name: "身份验证", exact: true }).locator("..").boundingBox();
+  assert.ok(Math.abs(passwordCard.width - identityCard.width) < 1, "password card spans two columns");
+  assert.equal(await page.locator("footer, .sidebar-note").count(), 0, "obsolete footer remains");
   await page.getByLabel("原 FastCAS 密码").fill("invited-reader-password-123");
   await page
     .getByLabel("新 FastCAS 密码", { exact: true })
@@ -355,8 +392,15 @@ try {
   );
   assert.equal(unverified, 403, "administrator access succeeded before MFA");
   await page.getByRole("button", { name: "设置认证器" }).click();
-  const uri = await page.getByLabel("认证器配置").inputValue();
-  await page.getByLabel("动态验证码或恢复码").fill(totp(uri));
+  const uri = await page.getByLabel("认证器配置", { exact: true }).inputValue();
+  const qr = page.getByRole("img", { name: "认证器配置二维码" });
+  await qr.waitFor();
+  const identityDuringEnrollment = await page.getByRole("heading", { name: "身份验证", exact: true }).locator("..").boundingBox();
+  const passwordDuringEnrollment = await page.getByRole("heading", { name: "修改 FastCAS 密码" }).locator("..").boundingBox();
+  assert.ok(Math.abs(passwordDuringEnrollment.y - identityDuringEnrollment.y - identityDuringEnrollment.height - 22) < 1, "tall MFA card leaves a gap above password card");
+  await qr.screenshot({ path: "../.local/ui-verification/authenticator-qr.png" });
+  await screenshot("security-authenticator-setup");
+  await page.getByLabel("认证器动态验证码", { exact: true }).fill(totp(uri));
   await page.getByRole("button", { name: "确认验证码并开启" }).click();
   await page.getByText("双重验证：已启用").waitFor();
   const originalRecovery = await page.locator("pre").innerText();
