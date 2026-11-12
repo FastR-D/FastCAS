@@ -1,6 +1,6 @@
 {
   "name": "@fastrd/fastcas",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Optional FastCAS login and account linking for FastR-D applications",
   "type": "module",
   "exports": {

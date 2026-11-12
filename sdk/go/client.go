@@ -101,6 +101,7 @@ type Identity struct {
 	Email         string `json:"email,omitempty"`
 	EmailVerified bool   `json:"email_verified"`
 	SessionID     string `json:"sid,omitempty"`
+	Role          string `json:"role,omitempty"`
 }
 type LinkIntent struct {
 	ID        string    `json:"id"`
@@ -323,16 +324,18 @@ func (c *Client) FinishLogin(ctx context.Context, callback string, options Finis
 	}
 	var claims struct {
 		Name string `json:"name"`
+		Role string `json:"role"`
 		SID  string `json:"sid"`
 	}
 	if err = profile.Claims(&claims); err != nil {
 		return nil, err
 	}
 	name := claims.Name
+	role := claims.Role
 	if err = idToken.Claims(&claims); err != nil {
 		return nil, err
 	}
-	return &LoginResult{Identity: Identity{Issuer: c.config.Issuer, Subject: idToken.Subject, Name: name, Email: profile.Email, EmailVerified: profile.EmailVerified, SessionID: claims.SID}, Transaction: *t, Token: token, IDToken: raw}, nil
+	return &LoginResult{Identity: Identity{Issuer: c.config.Issuer, Subject: idToken.Subject, Name: name, Email: profile.Email, EmailVerified: profile.EmailVerified, SessionID: claims.SID, Role: role}, Transaction: *t, Token: token, IDToken: raw}, nil
 }
 func (c *Client) PrepareLink(ctx context.Context, result *LoginResult) (*Link, error) {
 	t := result.Transaction

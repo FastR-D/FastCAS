@@ -186,7 +186,7 @@ class FastCAS:
         profile = self._json(self.http.get(self.discovery()["userinfo_endpoint"], headers={"Authorization": "Bearer "+tokens["access_token"]}))
         if profile.get("sub") != claims["sub"]:
             raise FastCASError("subject_mismatch", "Userinfo subject mismatch")
-        return {"identity": dict(issuer=claims["iss"], subject=claims["sub"], name=profile.get("name"), email=profile.get("email"), email_verified=profile.get("email_verified") is True, sid=claims.get("sid")), "transaction": tx, "tokens": tokens}
+        return {"identity": dict(issuer=claims["iss"], subject=claims["sub"], name=profile.get("name"), email=profile.get("email"), email_verified=profile.get("email_verified") is True, sid=claims.get("sid"), role=profile.get("role")), "transaction": tx, "tokens": tokens}
 
     def prepare_link(self, result: dict) -> dict:
         tx = result["transaction"]

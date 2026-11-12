@@ -7,7 +7,7 @@ export class FastCASError extends Error {
 }
 export interface Link { id: string; client_id: string; local_account_ref: string; subject: string; state: "prepared" | "active" | "revoked"; version: number; verified_at: string; }
 export interface LinkIntent { id: string; client_id: string; local_account_ref: string; nonce: string; state: string; expires_at: string; }
-export interface Identity { issuer: string; subject: string; name?: string; email?: string; emailVerified: boolean; sessionId?: string; }
+export interface Identity { issuer: string; subject: string; name?: string; email?: string; emailVerified: boolean; sessionId?: string; role?: string; }
 export interface Transaction {
   state: string; nonce: string; verifier: string; bindingHash: string; expiresAt: number;
   purpose: "login" | "link" | "register"; returnTo: string; localAccountRef?: string; localSessionId?: string; intent?: LinkIntent;
@@ -124,7 +124,7 @@ export class FastCAS {
     if (!claims?.sub || claims.iss !== this.config.issuer) throw new FastCASError("identity_invalid", "No verified subject returned");
     const profile = await oidc.fetchUserInfo(configuration, tokens.access_token, claims.sub);
     return { identity: { issuer: claims.iss, subject: claims.sub, name: profile.name, email: profile.email,
-      emailVerified: profile.email_verified === true, sessionId: typeof claims.sid === "string" ? claims.sid : undefined }, transaction, tokens };
+      emailVerified: profile.email_verified === true, sessionId: typeof claims.sid === "string" ? claims.sid : undefined, role: typeof profile.role === "string" ? profile.role : undefined }, transaction, tokens };
   }
   async prepareLink(result: LoginResult): Promise<Link> {
     const intent = result.transaction.intent;
