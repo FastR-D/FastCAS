@@ -330,7 +330,7 @@ func (s *Store) userInfo(ctx context.Context, info *oidc.UserInfo, subject strin
 	}
 	info.Subject = u.ID
 	if slices.Contains(scopes, oidc.ScopeProfile) {
-		info.Name = u.Name
+		setProfileClaims(info, u)
 	}
 	if slices.Contains(scopes, oidc.ScopeEmail) {
 		info.Email = u.Email
@@ -338,6 +338,14 @@ func (s *Store) userInfo(ctx context.Context, info *oidc.UserInfo, subject strin
 	}
 	return nil
 }
+
+// Role comes from the current active identity on each UserInfo request. Relying
+// parties can mirror central administrators without trusting browser input.
+func setProfileClaims(info *oidc.UserInfo, identity *Identity) {
+	info.Name = identity.Name
+	info.AppendClaims("role", identity.Role)
+}
+
 func (s *Store) SetUserinfoFromRequest(ctx context.Context, info *oidc.UserInfo, r op.IDTokenRequest, scopes []string) error {
 	if err := s.userInfo(ctx, info, r.GetSubject(), scopes); err != nil {
 		return err
