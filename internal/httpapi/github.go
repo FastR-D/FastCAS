@@ -305,6 +305,16 @@ func (s *Server) githubCallback(w http.ResponseWriter, r *http.Request) {
 		s.setCookie(w, "fastcas_github_mfa", browser, 600)
 		w.Header().Set("Referrer-Policy", "same-origin")
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		if f.AuthRequestID != "" {
+			request, err := s.Store.AuthRequestByID(r.Context(), f.AuthRequestID)
+			if err != nil {
+				failure(w, err)
+				return
+			}
+			if !s.authorizationFormPolicy(w, request.(*core.Authorization)) {
+				return
+			}
+		}
 		_ = githubMFATemplate.Execute(w, map[string]any{"Title": "双重验证", "Assets": s.authAssets, "Challenge": challenge})
 		return
 	}
@@ -352,6 +362,14 @@ func (s *Server) githubSession(w http.ResponseWriter, r *http.Request, subject s
 		destination = "/device?user_code=" + url.QueryEscape(f.DeviceCode)
 	}
 	if f.AuthRequestID != "" {
+		session, err := s.Store.Session(r.Context(), token)
+		if err != nil {
+			failure(w, err)
+			return
+		}
+		if s.resumeAuthorization(w, r, f.AuthRequestID, session) {
+			return
+		}
 		destination = "/login?auth_request_id=" + url.QueryEscape(f.AuthRequestID)
 	}
 	http.Redirect(w, r, destination, http.StatusSeeOther)

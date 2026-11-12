@@ -28,21 +28,25 @@ with tempfile.TemporaryDirectory() as temp, httpx.Client(follow_redirects=False)
 
     def complete(url):
         response = browser.get(url)
-        assert response.status_code == 302
-        login_url = urljoin(issuer, response.headers["location"])
-        request_id = parse_qs(urlparse(login_url).query)["auth_request_id"][0]
-        body = browser.get(login_url).text
-        if 'name="password"' in body:
+        for _ in range(10):
+            if response.status_code in (302, 303):
+                next_url = urljoin(issuer, response.headers["location"])
+                if urlparse(next_url).netloc != urlparse(issuer).netloc:
+                    return next_url
+                url = next_url
+                response = browser.get(url)
+                continue
+            assert response.status_code == 200, response.status_code
+            body = response.text
+            request_id = parse_qs(urlparse(url).query)["auth_request_id"][0]
             csrf = re.search(r'name="csrf" value="([^"]+)"', body)[1]
-            response = browser.post(issuer+"/login", data=dict(csrf=csrf, auth_request_id=request_id, email="alice@example.test", password="correct horse battery staple", action="login"), headers={"Origin": issuer})
-            assert response.status_code == 303
-            body = browser.get(urljoin(issuer, response.headers["location"])).text
-        csrf = re.search(r'name="csrf" value="([^"]+)"', body)[1]
-        response = browser.post(issuer+"/login", data=dict(csrf=csrf, auth_request_id=request_id, action="approve"), headers={"Origin": issuer})
-        assert response.status_code == 303
-        response = browser.get(urljoin(issuer, response.headers["location"]))
-        assert response.status_code == 302
-        return response.headers["location"]
+            form = dict(csrf=csrf, auth_request_id=request_id, action="approve")
+            if 'name="password"' in body:
+                form.update(email="alice@example.test", password="correct horse battery staple", action="login")
+            else:
+                assert 'value="approve"' in body
+            response = browser.post(issuer+"/login", data=form, headers={"Origin": issuer})
+        raise AssertionError("Authorization did not finish")
 
     binding = secrets.token_urlsafe(32)
     callback = complete(sdk.begin_login(binding, scopes=["openid", "profile", "email", "offline_access", "research:read"]))

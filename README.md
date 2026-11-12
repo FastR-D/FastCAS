@@ -10,6 +10,8 @@ FastCAS 是 FastR-D 工具生态的**可选统一身份服务**，后端使用 G
 
 GitHub 登录、注册与已有账号绑定的配置见 [GitHub 登录指南](docs/github-login.md)。线上 GitHub 注册仅允许 FastR-D 组织正式成员。
 
+常规登录自动复用中心会话，输入凭据后直接返回项目；静默检查和权限确认策略见[无感登录](docs/sso.md)。
+
 ## 阅读顺序
 
 1. [项目现状与代码依据](docs/planning/01-project-research.md)

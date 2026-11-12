@@ -16,23 +16,29 @@ async function browser(url, form) {
 }
 async function complete(url) {
   let response = await browser(url);
-  assert.equal(response.status, 302);
-  let login = new URL(response.headers.get("location"), issuer);
-  let body = await (await browser(login)).text();
-  const request = login.searchParams.get("auth_request_id");
-  if (body.includes('name="password"')) {
+  for (let step = 0; step < 10; step++) {
+    if ([302, 303].includes(response.status)) {
+      const next = new URL(response.headers.get("location"), issuer);
+      if (next.origin !== issuer) return next;
+      url = next;
+      response = await browser(url);
+      continue;
+    }
+    assert.equal(response.status, 200);
+    const body = await response.text();
+    const request = new URL(url).searchParams.get("auth_request_id");
     const csrf = body.match(/name="csrf" value="([^"]+)"/)[1];
-    response = await browser(issuer + "/login", { csrf, auth_request_id: request, email: "alice@example.test", password: "correct horse battery staple", action: "login" });
-    assert.equal(response.status, 303);
-    body = await (await browser(new URL(response.headers.get("location"), issuer))).text();
+    const form = { csrf, auth_request_id: request, action: "approve" };
+    if (body.includes('name="password"')) {
+      Object.assign(form, { email: "alice@example.test", password: "correct horse battery staple", action: "login" });
+    } else {
+      assert(body.includes('value="approve"'));
+    }
+    response = await browser(issuer + "/login", form);
   }
-  const csrf = body.match(/name="csrf" value="([^"]+)"/)[1];
-  response = await browser(issuer + "/login", { csrf, auth_request_id: request, action: "approve" });
-  assert.equal(response.status, 303);
-  response = await browser(new URL(response.headers.get("location"), issuer));
-  assert.equal(response.status, 302);
-  return new URL(response.headers.get("location"));
+  throw new Error("Authorization did not finish");
 }
+
 const binding = "test-browser-binding-long-enough-for-entropy-contract";
 const callback = await complete(await cas.beginLogin({ browserBinding: binding, scopes: ["openid", "profile", "email", "offline_access", "research:read"] }));
 const login = await cas.finishLogin(callback, { browserBinding: binding });

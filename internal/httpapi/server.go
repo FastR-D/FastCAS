@@ -15,7 +15,6 @@ import (
 
 	"github.com/FastR-D/FastCAS/internal/core"
 	"github.com/go-chi/chi/v5"
-	"github.com/zitadel/oidc/v3/pkg/oidc"
 	"github.com/zitadel/oidc/v3/pkg/op"
 )
 
@@ -68,6 +67,7 @@ func New(store *core.Store, issuer string, dev bool) (*Server, error) {
 		send(w, 200, map[string]bool{"ready": true})
 	})
 	r.Get("/login", s.loginPage)
+	r.Get("/authorize/continue", s.loginPage)
 	r.Post("/login", s.login)
 	r.Post("/auth/github/start", s.githubStart)
 	r.Get("/auth/github/callback", s.githubCallback)
@@ -218,6 +218,12 @@ func (s *Server) loginPage(w http.ResponseWriter, r *http.Request) {
 	// Origin: null. Same-origin keeps the auth request ID off external sites
 	// while allowing the strict Origin check on the login action.
 	w.Header().Set("Referrer-Policy", "same-origin")
+	if id := r.URL.Query().Get("auth_request_id"); id != "" {
+		session, _ := s.Store.Session(r.Context(), cookie(r, "fastcas_session"))
+		if s.resumeAuthorization(w, r, id, session) {
+			return
+		}
+	}
 	csrf := core.RandomToken()
 	s.setCookie(w, "fastcas_form", csrf, 300)
 	data := map[string]any{"Title": "登录", "Assets": s.authAssets, "CSRF": csrf, "RequestID": r.URL.Query().Get("auth_request_id"), "ReturnDevice": safeDeviceCode(r.URL.Query().Get("return_device"))}
@@ -246,18 +252,9 @@ func (s *Server) loginPage(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		a := request.(*core.Authorization)
-		redirect, err := url.Parse(a.GetRedirectURI())
-		if err != nil || redirect.Scheme == "" || redirect.Host == "" || redirect.User != nil || strings.ContainsAny(redirect.Host, " \t\r\n;'\"\\") {
-			failure(w, core.ErrForbidden)
+		if !s.authorizationFormPolicy(w, a) {
 			return
 		}
-		// Chrome applies form-action to every redirect in the authorization
-		// form's navigation chain, including the registered RP callback.
-		formOrigins := redirect.Scheme + "://" + redirect.Host
-		if s.github != nil {
-			formOrigins += " https://github.com"
-		}
-		w.Header().Set("Content-Security-Policy", "default-src 'self'; form-action 'self' "+formOrigins+"; frame-ancestors 'none'; base-uri 'none'")
 		client, err := s.Store.Client(r.Context(), a.GetClientID())
 		if err != nil {
 			failure(w, err)
@@ -272,7 +269,7 @@ func (s *Server) loginPage(w http.ResponseWriter, r *http.Request) {
 		}
 		data["Link"] = link
 		session, err := s.Store.Session(r.Context(), cookie(r, "fastcas_session"))
-		if err == nil && sessionFresh(a, session) {
+		if err == nil && a.SessionFresh(session) && (a.RequestedSubject == "" || a.RequestedSubject == session.IdentityID) {
 			user, err := s.Store.Identity(r.Context(), session.IdentityID)
 			if err == nil {
 				data["User"] = user
@@ -281,14 +278,6 @@ func (s *Server) loginPage(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	_ = loginTemplate.Execute(w, data)
-}
-func sessionFresh(a *core.Authorization, session *core.BrowserSession) bool {
-	for _, prompt := range a.Request.Prompt {
-		if prompt == oidc.PromptLogin && session.AuthenticatedAt.Before(a.CreatedAt) {
-			return false
-		}
-	}
-	return a.Request.MaxAge == nil || time.Since(session.AuthenticatedAt) <= time.Duration(*a.Request.MaxAge)*time.Second
 }
 func (s *Server) login(w http.ResponseWriter, r *http.Request) {
 	if !s.originOK(r) || r.ParseForm() != nil {
@@ -350,6 +339,14 @@ func (s *Server) login(w http.ResponseWriter, r *http.Request) {
 			}
 			return
 		}
+		session, err := s.Store.Session(r.Context(), token)
+		if err != nil {
+			failure(w, err)
+			return
+		}
+		if s.resumeAuthorization(w, r, id, session) {
+			return
+		}
 		http.Redirect(w, r, "/login?auth_request_id="+url.QueryEscape(id), http.StatusSeeOther)
 	case "approve":
 		session, err := s.Store.Session(r.Context(), cookie(r, "fastcas_session"))
@@ -362,7 +359,7 @@ func (s *Server) login(w http.ResponseWriter, r *http.Request) {
 			failure(w, err)
 			return
 		}
-		if !sessionFresh(request.(*core.Authorization), session) {
+		if !request.(*core.Authorization).SessionFresh(session) {
 			failure(w, core.ErrUnauthorized)
 			return
 		}

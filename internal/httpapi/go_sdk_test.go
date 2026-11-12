@@ -6,8 +6,6 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
-	"strings"
 	"sync"
 	"testing"
 
@@ -39,31 +37,7 @@ func (s *transactions) Take(_ context.Context, state string) (*fastcas.Transacti
 
 func completeSDKAuthorization(t *testing.T, b browser, authorize string) string {
 	t.Helper()
-	u, _ := url.Parse(authorize)
-	response, body := b.request("GET", u.RequestURI(), nil)
-	if response.StatusCode != 302 {
-		t.Fatalf("authorize %d", response.StatusCode)
-	}
-	login, _ := url.Parse(response.Header.Get("Location"))
-	requestID := login.Query().Get("auth_request_id")
-	_, body = b.request("GET", login.RequestURI(), nil)
-	if strings.Contains(string(body), `name="password"`) {
-		response, body = b.request("POST", "/login", url.Values{"csrf": {csrf(t, body)}, "auth_request_id": {requestID}, "email": {"alice@example.test"}, "password": {"correct horse battery staple"}, "action": {"login"}})
-		if response.StatusCode != 303 {
-			t.Fatalf("login %d", response.StatusCode)
-		}
-		_, body = b.request("GET", response.Header.Get("Location"), nil)
-	}
-	response, body = b.request("POST", "/login", url.Values{"csrf": {csrf(t, body)}, "auth_request_id": {requestID}, "action": {"approve"}})
-	if response.StatusCode != 303 {
-		t.Fatalf("consent %d", response.StatusCode)
-	}
-	callback, _ := url.Parse(response.Header.Get("Location"))
-	response, _ = b.request("GET", callback.RequestURI(), nil)
-	if response.StatusCode != 302 {
-		t.Fatalf("callback %d", response.StatusCode)
-	}
-	return response.Header.Get("Location")
+	return finishBrowserAuthorization(t, b, authorize, "alice@example.test", "correct horse battery staple")
 }
 func TestGoSDKLoginAndLinkContract(t *testing.T) {
 	store, b := setup(t)

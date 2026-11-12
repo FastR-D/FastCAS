@@ -7,18 +7,20 @@ import (
 	"slices"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/zitadel/oidc/v3/pkg/oidc"
 	"github.com/zitadel/oidc/v3/pkg/op"
 )
 
 type Authorization struct {
-	ID            string
-	CreatedAt     time.Time
-	Request       oidc.AuthRequest
-	Subject       string
-	SessionID     string
-	AuthTime      time.Time
-	Authenticated bool
+	ID               string
+	CreatedAt        time.Time
+	Request          oidc.AuthRequest
+	Subject          string
+	SessionID        string
+	AuthTime         time.Time
+	Authenticated    bool
+	RequestedSubject string
 }
 
 func (a *Authorization) GetID() string          { return a.ID }
@@ -39,7 +41,46 @@ func (a *Authorization) GetState() string                   { return a.Request.S
 func (a *Authorization) GetSubject() string                 { return a.Subject }
 func (a *Authorization) Done() bool                         { return a.Authenticated }
 
-func (s *Store) CreateAuthRequest(ctx context.Context, r *oidc.AuthRequest, _ string) (op.AuthRequest, error) {
+// Identity scopes are trusted at application registration. Resource scopes
+// require user approval once, and again if the application requests more.
+func (s *Store) AuthorizationConsentRequired(ctx context.Context, a *Authorization, subject string) (bool, error) {
+	var resources []string
+	for _, scope := range a.Request.Scopes {
+		if !slices.Contains([]string{"openid", "profile", "email", "offline_access"}, scope) {
+			resources = append(resources, scope)
+		}
+	}
+	if len(resources) == 0 {
+		return false, nil
+	}
+	var approved bool
+	err := s.DB.QueryRow(ctx, `SELECT scopes @> $3::text[] FROM authorization_consents WHERE subject=$1 AND client_id=$2`, subject, a.Request.ClientID, resources).Scan(&approved)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return true, nil
+	}
+	return !approved, err
+}
+
+func (a *Authorization) SessionFresh(session *BrowserSession) bool {
+	if session == nil || !session.ExpiresAt.After(time.Now()) {
+		return false
+	}
+	for _, prompt := range a.Request.Prompt {
+		if prompt == oidc.PromptLogin && session.AuthenticatedAt.Before(a.CreatedAt) {
+			return false
+		}
+	}
+	if a.Request.MaxAge == nil {
+		return true
+	}
+	// max_age=0 requests authentication for this transaction, rather than an
+	// impossible zero-duration session after the credential POST.
+	if *a.Request.MaxAge == 0 {
+		return !session.AuthenticatedAt.Before(a.CreatedAt)
+	}
+	return time.Since(session.AuthenticatedAt) <= time.Duration(*a.Request.MaxAge)*time.Second
+}
+func (s *Store) CreateAuthRequest(ctx context.Context, r *oidc.AuthRequest, requestedSubject string) (op.AuthRequest, error) {
 	c, err := s.Client(ctx, r.ClientID)
 	if err != nil {
 		return nil, err
@@ -58,11 +99,7 @@ func (s *Store) CreateAuthRequest(ctx context.Context, r *oidc.AuthRequest, _ st
 			return nil, oidc.ErrInvalidScope()
 		}
 	}
-	// Never display UI in a prompt=none request. Silent consent is not implemented.
-	if slices.Contains(r.Prompt, oidc.PromptNone) {
-		return nil, oidc.ErrLoginRequired()
-	}
-	a := &Authorization{ID: RandomToken(), CreatedAt: time.Now().UTC(), Request: *r}
+	a := &Authorization{ID: RandomToken(), CreatedAt: time.Now().UTC(), Request: *r, RequestedSubject: requestedSubject}
 	data, err := marshal(a)
 	if err != nil {
 		return nil, err
@@ -86,6 +123,23 @@ func (s *Store) CompleteAuthorization(ctx context.Context, id string, session *B
 		return err
 	}
 	defer tx.Rollback(ctx)
+	if session == nil {
+		return ErrUnauthorized
+	}
+	// Match the identity -> session -> authorization lock order used by account
+	// recovery. Revocation cannot race completion and lock ordering stays stable.
+	var active string
+	if err = tx.QueryRow(ctx, `SELECT id FROM identities WHERE id=$1 AND status='active' AND deleted_at IS NULL FOR SHARE`, session.IdentityID).Scan(&active); err != nil {
+		return classify(err)
+	}
+	var current BrowserSession
+	err = tx.QueryRow(ctx, `SELECT id,identity_id,authenticated_at,expires_at FROM browser_sessions
+ WHERE id=$1 AND identity_id=$2 AND revoked_at IS NULL AND expires_at>now() FOR SHARE`, session.ID, session.IdentityID).
+		Scan(&current.ID, &current.IdentityID, &current.AuthenticatedAt, &current.ExpiresAt)
+	if err != nil {
+		return classify(err)
+	}
+	session = &current
 	var data []byte
 	err = tx.QueryRow(ctx, `SELECT payload FROM auth_requests WHERE id=$1 AND expires_at>now() AND consumed_at IS NULL AND code_hash IS NULL FOR UPDATE`, id).Scan(&data)
 	if err != nil {
@@ -98,8 +152,8 @@ func (s *Store) CompleteAuthorization(ctx context.Context, id string, session *B
 	if a.Authenticated {
 		return ErrExpired
 	}
-	if _, err = s.Identity(ctx, session.IdentityID); err != nil {
-		return err
+	if !a.SessionFresh(session) {
+		return ErrUnauthorized
 	}
 	a.Subject = session.IdentityID
 	a.SessionID = session.ID
@@ -110,6 +164,10 @@ func (s *Store) CompleteAuthorization(ctx context.Context, id string, session *B
 		return err
 	}
 	if _, err = tx.Exec(ctx, `UPDATE auth_requests SET payload=$2 WHERE id=$1`, id, data); err != nil {
+		return err
+	}
+	if _, err = tx.Exec(ctx, `INSERT INTO authorization_consents(subject,client_id,scopes) VALUES($1,$2,$3)
+ ON CONFLICT(subject,client_id) DO UPDATE SET scopes=ARRAY(SELECT DISTINCT unnest(authorization_consents.scopes || EXCLUDED.scopes)),updated_at=now()`, a.Subject, a.Request.ClientID, []string(a.Request.Scopes)); err != nil {
 		return err
 	}
 	if _, err = tx.Exec(ctx, `UPDATE link_intents SET subject=$3,state='confirmed' WHERE client_id=$1 AND nonce=$2 AND state='pending' AND expires_at>now()`, a.Request.ClientID, a.Request.Nonce, a.Subject); err != nil {

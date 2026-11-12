@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -471,14 +472,14 @@ func TestGitHubReturnsToDeviceAndOIDCConsent(t *testing.T) {
 		t.Fatal(err)
 	}
 	challenge := sha256.Sum256([]byte(core.RandomToken()))
-	q := url.Values{"client_id": {"rp"}, "redirect_uri": {"http://127.0.0.1:3000/callback"}, "response_type": {"code"}, "scope": {"openid"}, "state": {"rp-state"}, "nonce": {"rp-nonce"}, "code_challenge_method": {"S256"}, "code_challenge": {base64.RawURLEncoding.EncodeToString(challenge[:])}}
+	q := url.Values{"client_id": {"rp"}, "redirect_uri": {"http://127.0.0.1:3000/callback"}, "response_type": {"code"}, "scope": {"openid"}, "prompt": {"consent"}, "state": {"rp-state"}, "nonce": {"rp-nonce"}, "code_challenge_method": {"S256"}, "code_challenge": {base64.RawURLEncoding.EncodeToString(challenge[:])}}
 	w = g.request("GET", "/oauth/authorize?"+q.Encode(), nil)
 	loginURL, err := url.Parse(w.Header().Get("Location"))
 	if err != nil || loginURL.Query().Get("auth_request_id") == "" {
 		t.Fatalf("OIDC start: %d %s", w.Code, w.Body.String())
 	}
 	w = g.request("GET", g.start("login", "?"+loginURL.RawQuery), nil)
-	if w.Code != 303 || w.Header().Get("Location") != loginURL.RequestURI() {
+	if w.Code != 303 || w.Header().Get("Location") != "/login?"+loginURL.RawQuery {
 		t.Fatalf("OIDC consent return lost: %d %s", w.Code, w.Header().Get("Location"))
 	}
 	w = g.request("GET", w.Header().Get("Location"), nil)
@@ -497,6 +498,58 @@ func TestGitHubReturnsToDeviceAndOIDCConsent(t *testing.T) {
 	result, err := url.Parse(w.Header().Get("Location"))
 	if err != nil || w.Code != 302 || result.Query().Get("state") != "rp-state" || result.Query().Get("code") == "" {
 		t.Fatal("GitHub login lost OIDC authorization result")
+	}
+}
+
+func TestGitHubSSOReturnsWithoutExtraConsent(t *testing.T) {
+	for _, mfa := range []bool{false, true} {
+		t.Run(fmt.Sprint("mfa=", mfa), func(t *testing.T) {
+			g := newGitHubTest(t, "")
+			ctx := context.Background()
+			user, err := g.server.Store.RegisterGitHub(ctx, 123, g.login, g.email, "Octocat")
+			if err != nil {
+				t.Fatal(err)
+			}
+			var recovery []string
+			if mfa {
+				g.localSession(user)
+				session, _ := g.server.Store.Session(ctx, g.cookies["fastcas_session"].Value)
+				uri, err := g.server.Store.BeginMFA(ctx, user.ID)
+				if err != nil {
+					t.Fatal(err)
+				}
+				parsed, _ := url.Parse(uri)
+				code, _ := totp.GenerateCode(parsed.Query().Get("secret"), time.Now())
+				recovery, err = g.server.Store.ConfirmMFA(ctx, user.ID, session.ID, code)
+				if err != nil {
+					t.Fatal(err)
+				}
+			}
+			if err := g.server.Store.RegisterClient(ctx, core.Client{ID: "rp", Name: "RP", Development: true, Redirects: []string{"http://127.0.0.1:3000/callback"}, Scopes: []string{"openid"}}, "test-client-secret-long-enough-1234"); err != nil {
+				t.Fatal(err)
+			}
+			challenge := sha256.Sum256([]byte(core.RandomToken()))
+			q := url.Values{"client_id": {"rp"}, "redirect_uri": {"http://127.0.0.1:3000/callback"}, "response_type": {"code"}, "scope": {"openid"}, "prompt": {"login"}, "state": {"rp-state"}, "nonce": {"rp-nonce"}, "code_challenge_method": {"S256"}, "code_challenge": {base64.RawURLEncoding.EncodeToString(challenge[:])}}
+			w := g.request("GET", "/oauth/authorize?"+q.Encode(), nil)
+			next, _ := url.Parse(w.Header().Get("Location"))
+			w = g.request("GET", g.start("login", "?"+next.RawQuery), nil)
+			if mfa {
+				match := regexp.MustCompile(`name="challenge" value="([^"]+)"`).FindStringSubmatch(w.Body.String())
+				if w.Code != 200 || len(match) != 2 || !strings.Contains(w.Header().Get("Content-Security-Policy"), "form-action 'self' http://127.0.0.1:3000") {
+					t.Fatal("MFA form missing callback policy", w.Code)
+				}
+				w = g.request("POST", "/auth/github/mfa", url.Values{"challenge": {match[1]}, "code": {recovery[0]}})
+			}
+			if w.Code != 303 || strings.Contains(w.Header().Get("Location"), "/login") {
+				t.Fatalf("GitHub login requested extra confirmation: %d %s", w.Code, w.Header().Get("Location"))
+			}
+			callback, _ := url.Parse(w.Header().Get("Location"))
+			w = g.request("GET", callback.RequestURI(), nil)
+			rp, _ := url.Parse(w.Header().Get("Location"))
+			if w.Code != 302 || rp.Query().Get("code") == "" || rp.Query().Get("state") != "rp-state" {
+				t.Fatal("GitHub SSO lost callback", w.Code)
+			}
+		})
 	}
 }
 

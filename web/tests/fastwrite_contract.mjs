@@ -10,7 +10,7 @@ async function authorize(target){
  await target.locator('input[name=email]').fill('alice@example.test');
  await target.locator('input[name=password]').fill('correct horse battery staple');
  await target.getByRole('button',{name:'登录',exact:true}).click();
- await target.getByRole('button',{name:'确认并继续'}).click();
+ if(await target.getByRole('button',{name:'确认并继续'}).count()) await target.getByRole('button',{name:'确认并继续'}).click();
 }
 async function me(target){return target.evaluate(()=>fetch('/api/auth/me',{headers:{authorization:`Bearer ${localStorage.getItem('fastwrite.session-token')}`}}).then(response=>response.json()))}
 try{

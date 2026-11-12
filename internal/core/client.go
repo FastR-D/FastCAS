@@ -45,8 +45,10 @@ func (c *Client) AuthMethod() oidc.AuthMethod {
 func (c *Client) ResponseTypes() []oidc.ResponseType {
 	return []oidc.ResponseType{oidc.ResponseTypeCode}
 }
-func (c *Client) GrantTypes() []oidc.GrantType        { return c.Grants }
-func (c *Client) LoginURL(id string) string           { return "/login?auth_request_id=" + url.QueryEscape(id) }
+func (c *Client) GrantTypes() []oidc.GrantType { return c.Grants }
+func (c *Client) LoginURL(id string) string {
+	return "/authorize/continue?auth_request_id=" + url.QueryEscape(id)
+}
 func (c *Client) AccessTokenType() op.AccessTokenType { return op.AccessTokenTypeJWT }
 func (c *Client) IDTokenLifetime() time.Duration      { return 5 * time.Minute }
 func (c *Client) DevMode() bool                       { return c.Development }

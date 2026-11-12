@@ -104,34 +104,8 @@ func authorizeCodeFor(t *testing.T, b browser, scopes, email, password string) (
 	verifier, nonce := core.RandomToken(), core.RandomToken()
 	sum := sha256.Sum256([]byte(verifier))
 	params := url.Values{"client_id": {"write"}, "redirect_uri": {"http://127.0.0.1:3003/callback"}, "response_type": {"code"}, "scope": {scopes}, "state": {"browser-state"}, "nonce": {nonce}, "code_challenge": {base64.RawURLEncoding.EncodeToString(sum[:])}, "code_challenge_method": {"S256"}}
-	response, body := b.request("GET", "/oauth/authorize?"+params.Encode(), nil)
-	if response.StatusCode != 302 {
-		t.Fatalf("authorize status %d: %s", response.StatusCode, body)
-	}
-	loginURL, err := url.Parse(response.Header.Get("Location"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	requestID := loginURL.Query().Get("auth_request_id")
-	_, body = b.request("GET", loginURL.RequestURI(), nil)
-	response, body = b.request("POST", "/login", url.Values{"csrf": {csrf(t, body)}, "auth_request_id": {requestID}, "email": {email}, "password": {password}, "action": {"login"}})
-	if response.StatusCode != 303 {
-		t.Fatalf("login status %d: %s", response.StatusCode, body)
-	}
-	_, body = b.request("GET", response.Header.Get("Location"), nil)
-	response, body = b.request("POST", "/login", url.Values{"csrf": {csrf(t, body)}, "auth_request_id": {requestID}, "action": {"approve"}})
-	if response.StatusCode != 303 {
-		t.Fatalf("consent status %d: %s", response.StatusCode, body)
-	}
-	callback, err := url.Parse(response.Header.Get("Location"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	response, body = b.request("GET", callback.RequestURI(), nil)
-	if response.StatusCode != 302 {
-		t.Fatalf("callback status %d: %s", response.StatusCode, body)
-	}
-	destination, err := url.Parse(response.Header.Get("Location"))
+	callback := finishBrowserAuthorization(t, b, "/oauth/authorize?"+params.Encode(), email, password)
+	destination, err := url.Parse(callback)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -140,6 +114,49 @@ func authorizeCodeFor(t *testing.T, b browser, scopes, email, password string) (
 	}
 	return destination.Query().Get("code"), verifier, nonce
 }
+
+// Follow both seamless SSO and the explicit consent paths used for binding.
+func finishBrowserAuthorization(t *testing.T, b browser, authorize, email, password string) string {
+	t.Helper()
+	origin, _ := url.Parse(b.issuer)
+	destination, _ := url.Parse(authorize)
+	method, form := "GET", url.Values(nil)
+	for range 10 {
+		response, body := b.request(method, destination.RequestURI(), form)
+		switch response.StatusCode {
+		case 302, 303:
+			next, err := url.Parse(response.Header.Get("Location"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if next.IsAbs() && next.Host != origin.Host {
+				return next.String()
+			}
+			destination = next
+			method = "GET"
+			form = nil
+		case 200:
+			id := destination.Query().Get("auth_request_id")
+			form = url.Values{"csrf": {csrf(t, body)}, "auth_request_id": {id}}
+			if strings.Contains(string(body), `name="password"`) {
+				form.Set("action", "login")
+				form.Set("email", email)
+				form.Set("password", password)
+			} else if strings.Contains(string(body), `value="approve"`) {
+				form.Set("action", "approve")
+			} else {
+				t.Fatalf("unexpected authorization UI: %s", body)
+			}
+			destination, _ = url.Parse("/login")
+			method = "POST"
+		default:
+			t.Fatalf("authorization failed: %d %s", response.StatusCode, body)
+		}
+	}
+	t.Fatal("authorization redirect loop")
+	return ""
+}
+
 func exchange(t *testing.T, b browser, values url.Values) (int, map[string]any) {
 	t.Helper()
 	req, _ := http.NewRequest("POST", b.issuer+"/oauth/token", strings.NewReader(values.Encode()))
@@ -213,6 +230,7 @@ func TestWrongPKCEAndCrossOriginLoginRejected(t *testing.T) {
 	authorization, err := store.CreateAuthRequest(context.Background(), &oidc.AuthRequest{
 		ClientID: "write", RedirectURI: "http://127.0.0.1:3003/callback", ResponseType: oidc.ResponseTypeCode,
 		Scopes: []string{"openid"}, State: core.RandomToken(), Nonce: core.RandomToken(),
+		Prompt:        []string{oidc.PromptConsent},
 		CodeChallenge: strings.Repeat("A", 43), CodeChallengeMethod: oidc.CodeChallengeMethodS256,
 	}, "")
 	if err != nil {
