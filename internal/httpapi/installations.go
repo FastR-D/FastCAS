@@ -61,7 +61,7 @@ func (s *Server) revokeMyDeviceInstallation(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	if time.Since(session.AuthenticatedAt) > 5*time.Minute {
-		failure(w, core.ErrUnauthorized)
+		problem(w, 401, "reauthentication_required", "请输入授权码以继续")
 		return
 	}
 	if err := s.Store.RevokeDeviceInstallation(r.Context(), chi.URLParam(r, "id"), session.IdentityID); err != nil {

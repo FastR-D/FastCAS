@@ -1,7 +1,6 @@
 import {
   EyeOff,
   Link2,
-  Fingerprint,
   KeyRound,
   RefreshCw,
   ShieldCheck,
@@ -32,8 +31,6 @@ export function Security({
   onPasswordChanged: () => void;
 }) {
   const confirm = useConfirm();
-  const [password, setPassword] = useState("");
-  const [code, setCode] = useState("");
   const [uri, setUri] = useState("");
   const [enrollmentCode, setEnrollmentCode] = useState("");
   const [recovery, setRecovery] = useState<string[]>([]);
@@ -66,56 +63,6 @@ export function Security({
         <div className="security-column">
           <section>
             <h2 className="icon-heading">
-              <Icon icon={Fingerprint} size={18} />
-              身份验证
-            </h2>
-            <p>{me.user.email}</p>
-            <p>双重验证：{me.mfa_enabled ? "已启用" : "未启用"}</p>
-            {me.password_enabled ? (
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  void run(async () => {
-                    await api("/me/reauthenticate", { password, code });
-                    setPassword("");
-                    setCode("");
-                    onNotice("身份已重新验证");
-                    await refresh();
-                  });
-                }}
-              >
-                <label>
-                  当前密码
-                  <TextField
-                    type="password"
-                    autoComplete="current-password"
-                    required
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                  />
-                </label>
-                <label>
-                  动态验证码或恢复码
-                  <TextField
-                    autoComplete="one-time-code"
-                    value={code}
-                    onChange={(e) => setCode(e.target.value)}
-                  />
-                </label>
-                <Button type="submit" variant="primary" disabled={busy}>
-                  <Icon icon={Fingerprint} />
-                  重新验证身份
-                </Button>
-              </form>
-            ) : (
-              <p>
-                此账号通过 GitHub 登录。需要重新验证身份时，请
-                <a href="/login">重新使用 GitHub 登录</a>。
-              </p>
-            )}
-          </section>
-          <section>
-            <h2 className="icon-heading">
               <Icon icon={KeyRound} size={18} />
               {me.password_enabled ? "修改 FastCAS 密码" : "设置 FastCAS 密码"}
             </h2>
@@ -124,7 +71,10 @@ export function Security({
               登录。本地项目密码不变。
             </p>
             {!me.password_enabled && (
-              <p>请在 GitHub 登录后五分钟内设置密码。设置后也可使用邮箱与密码登录。</p>
+              <p>
+                请在 GitHub
+                登录后五分钟内设置密码。设置后也可使用邮箱与密码登录。
+              </p>
             )}
             <form
               onSubmit={(e) => {
@@ -192,7 +142,9 @@ export function Security({
               )}
               <Button type="submit" variant="primary" disabled={busy}>
                 <Icon icon={KeyRound} />
-                {me.password_enabled ? "修改 FastCAS 密码" : "设置 FastCAS 密码"}
+                {me.password_enabled
+                  ? "修改 FastCAS 密码"
+                  : "设置 FastCAS 密码"}
               </Button>
             </form>
           </section>
@@ -210,14 +162,15 @@ export function Security({
                 <>
                   <p>
                     绑定后可使用 GitHub 登录当前 FastCAS
-                    账号。绑定前请先重新验证身份；已开启双重验证时也需验证动态验证码。
+                    账号。需要二次验证时，输入授权码即可继续。
                   </p>
                   <Button
                     disabled={busy}
                     onClick={() =>
                       void run(async () => {
                         const result = await api<{ authorization_url: string }>(
-                          "/me/github", {},
+                          "/me/github",
+                          {},
                         );
                         window.location.assign(result.authorization_url);
                       })
@@ -238,9 +191,7 @@ export function Security({
             <p>使用认证器生成动态验证码。开启后请妥善保存一次性恢复码。</p>
             {me.mfa_enabled && (
               <>
-                <p>
-                  更新恢复码前，请先重新登录或重新验证身份与动态验证码；旧恢复码会立即失效。
-                </p>
+                <p>更新恢复码时可能需要输入授权码；旧恢复码会立即失效。</p>
                 <Button
                   disabled={busy}
                   onClick={async () => {
@@ -277,7 +228,9 @@ export function Security({
             )}
             {uri && (
               <>
-                <p>使用认证器扫描二维码，或手动导入下方 URI。此密钥只应由你保存。</p>
+                <p>
+                  使用认证器扫描二维码，或手动导入下方 URI。此密钥只应由你保存。
+                </p>
                 <div className="authenticator-qr">
                   <QRCodeSVG
                     value={uri}

@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strconv"
 	"strings"
@@ -18,6 +19,7 @@ func (s *Server) accountRoutes(r chi.Router) {
 	r.Post("/api/v1/recover-mfa", s.redeemMFAReset)
 	r.Post("/api/v1/me/mfa/enroll", s.enrollMFA)
 	r.Post("/api/v1/me/mfa/confirm", s.confirmMFA)
+	r.Post("/api/v1/me/mfa/verify", s.verifySessionMFA)
 	r.Post("/api/v1/me/mfa/recovery-codes", s.rotateMFARecoveryCodes)
 	r.Post("/api/v1/me/reauthenticate", s.reauthenticate)
 	r.Post("/api/v1/me/password", s.changePassword)
@@ -66,9 +68,24 @@ func (s *Server) authenticated(w http.ResponseWriter, r *http.Request, admin boo
 		failure(w, core.ErrForbidden)
 		return nil, false
 	}
-	if admin && s.Store.RequireAdmin(r.Context(), session) != nil {
-		problem(w, 403, "admin_mfa_required", "Administrator access requires recent multi-factor authentication")
-		return nil, false
+	if admin {
+		user, err := s.Store.Identity(r.Context(), session.IdentityID)
+		if err != nil {
+			failure(w, err)
+			return nil, false
+		}
+		if user.Role != "admin" {
+			failure(w, core.ErrForbidden)
+			return nil, false
+		}
+		if err = s.Store.RequireAdmin(r.Context(), session); err != nil {
+			if !errors.Is(err, core.ErrForbidden) {
+				failure(w, err)
+			} else {
+				problem(w, 403, "admin_mfa_required", "请输入授权码以继续")
+			}
+			return nil, false
+		}
 	}
 	return session, true
 }
@@ -78,7 +95,7 @@ func (s *Server) enrollMFA(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if time.Since(session.AuthenticatedAt) > 5*time.Minute {
-		failure(w, core.ErrUnauthorized)
+		problem(w, 401, "reauthentication_required", "请输入授权码以继续")
 		return
 	}
 	uri, err := s.Store.BeginMFA(r.Context(), session.IdentityID)
@@ -101,7 +118,7 @@ func (s *Server) confirmMFA(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if time.Since(session.AuthenticatedAt) > 5*time.Minute {
-		failure(w, core.ErrUnauthorized)
+		problem(w, 401, "reauthentication_required", "请输入授权码以继续")
 		return
 	}
 	codes, err := s.Store.ConfirmMFA(r.Context(), session.IdentityID, session.ID, input.Code)
@@ -116,6 +133,14 @@ func (s *Server) rotateMFARecoveryCodes(w http.ResponseWriter, r *http.Request) 
 	if !ok {
 		return
 	}
+	if err := s.Store.RequireRecentAccountAuth(r.Context(), session.IdentityID, session.ID); err != nil {
+		if errors.Is(err, core.ErrUnauthorized) {
+			problem(w, 401, "reauthentication_required", "请输入授权码以继续")
+		} else {
+			failure(w, err)
+		}
+		return
+	}
 	codes, err := s.Store.RotateMFARecoveryCodes(r.Context(), session.IdentityID, session.ID)
 	if err != nil {
 		failure(w, err)
@@ -123,6 +148,38 @@ func (s *Server) rotateMFARecoveryCodes(w http.ResponseWriter, r *http.Request) 
 	}
 	send(w, 200, map[string]any{"recovery_codes": codes})
 }
+func (s *Server) verifySessionMFA(w http.ResponseWriter, r *http.Request) {
+	session, ok := s.authenticated(w, r, false)
+	if !ok {
+		return
+	}
+	var input struct {
+		Code string `json:"code"`
+	}
+	if decode(r, &input) != nil || len(strings.TrimSpace(input.Code)) == 0 || len(input.Code) > 128 {
+		problem(w, 400, "invalid_mfa_code", "请输入有效的授权码")
+		return
+	}
+	enabled, err := s.Store.MFAEnabled(r.Context(), session.IdentityID)
+	if err != nil {
+		failure(w, err)
+		return
+	}
+	if !enabled {
+		problem(w, 409, "mfa_setup_required", "请先设置认证器")
+		return
+	}
+	if err = s.Store.StepUpMFA(r.Context(), session.IdentityID, session.ID, strings.TrimSpace(input.Code)); err != nil {
+		if errors.Is(err, core.ErrUnauthorized) {
+			problem(w, 401, "invalid_mfa_code", "授权码无效或已使用，请重试")
+		} else {
+			failure(w, err)
+		}
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
 func (s *Server) reauthenticate(w http.ResponseWriter, r *http.Request) {
 	session, ok := s.authenticated(w, r, false)
 	if !ok {
@@ -283,7 +340,7 @@ func (s *Server) myRevoke(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if time.Since(session.AuthenticatedAt) > 5*time.Minute {
-		failure(w, core.ErrUnauthorized)
+		problem(w, 401, "reauthentication_required", "请输入授权码以继续")
 		return
 	}
 	var client string

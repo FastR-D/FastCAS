@@ -14,6 +14,17 @@ import { Admin } from "./Admin";
 import { Delegations } from "./Delegations";
 import { Integration } from "./Integration";
 import { Users } from "./Users";
+import { useStepUpVerification, VerificationCancelled } from "./StepUp";
+
+class APIError extends Error {
+  constructor(
+    public status: number,
+    public code: string,
+    message: string,
+  ) {
+    super(message);
+  }
+}
 type Link = {
   id: string;
   client_id: string;
@@ -72,7 +83,17 @@ function App() {
   const [attempts, setAttempts] = useState<Record<string, DeliveryAttempt[]>>(
     {},
   );
-  async function api<T>(path: string, body?: unknown): Promise<T> {
+  const proofVersion = useRef(0);
+  const verification = useStepUpVerification({
+    enabled: Boolean(me?.mfa_enabled),
+    sessionID: me?.session.id,
+    verify: async (code) => {
+      await request<void>("/me/mfa/verify", { code });
+      proofVersion.current += 1;
+    },
+    onSetup: () => setPage("security"),
+  });
+  async function request<T>(path: string, body?: unknown): Promise<T> {
     const response = await fetch("/api/v1" + path, {
       method: body === undefined ? "GET" : "POST",
       credentials: "same-origin",
@@ -87,19 +108,41 @@ function App() {
     });
     if (!response.ok) {
       const problem = await response.json().catch(() => ({}));
-      throw new Error(
-        response.status === 401
-          ? "请先登录或重新验证身份"
-          : problem.message || "操作未完成，请检查权限与身份验证状态",
+      throw new APIError(
+        response.status,
+        problem.code || "request_failed",
+        problem.code === "authentication_required"
+          ? "请先登录"
+          : problem.message || "操作未完成，请重试",
       );
     }
     return response.status === 204 ? undefined : response.json();
+  }
+  async function api<T>(path: string, body?: unknown): Promise<T> {
+    const version = proofVersion.current;
+    try {
+      return await request<T>(path, body);
+    } catch (cause) {
+      if (
+        cause instanceof APIError &&
+        ["admin_mfa_required", "reauthentication_required"].includes(cause.code)
+      ) {
+        if (proofVersion.current === version)
+          await verification.requireVerification();
+        // Retry exactly once, after proof. Failed verification never replays a write.
+        return request<T>(path, body);
+      }
+      throw cause;
+    }
   }
   async function refresh() {
     try {
       setMe(await api<Me>("/me"));
     } catch (error) {
-      if (error instanceof Error && error.message === "请先登录或重新验证身份") {
+      if (
+        error instanceof APIError &&
+        error.code === "authentication_required"
+      ) {
         window.location.replace("/login" + window.location.search);
       }
       throw error;
@@ -113,7 +156,8 @@ function App() {
   useEffect(() => {
     refresh()
       .catch((e) => {
-        if (e.message !== "请先登录或重新验证身份") setError(e.message);
+        if (!(e instanceof APIError && e.code === "authentication_required"))
+          setError(e.message);
       })
       .finally(() => setLoading(false));
   }, []);
@@ -126,7 +170,9 @@ function App() {
     try {
       await work();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "请求失败");
+      if (!(e instanceof VerificationCancelled)) {
+        setError(e instanceof Error ? e.message : "请求失败");
+      }
     } finally {
       pendingRequests.current -= 1;
       setBusy(pendingRequests.current > 0);
@@ -176,6 +222,7 @@ function App() {
         })
       }
     >
+      {verification.dialog}
       <div className="intro">
         <p className="eyebrow">FAST R&D · IDENTITY</p>
         <h1>{me ? `你好，${me.user.name}` : "你的科研账号安全中心"}</h1>
@@ -204,7 +251,9 @@ function App() {
               run={run}
               refresh={refresh}
               onNotice={setNotice}
-              onPasswordChanged={() => window.location.replace("/login?notice=password-changed")}
+              onPasswordChanged={() =>
+                window.location.replace("/login?notice=password-changed")
+              }
             />
           )}
           {page === "links" && (
@@ -388,18 +437,22 @@ function App() {
             </section>
           )}
           {page === "identities" && me.user.role === "admin" && (
-            <Users currentUserId={me.user.id} api={api} busy={busy} run={run} onCurrentUserUpdated={(user) => {
-              if (user.email !== me.user.email) window.location.replace("/login");
-              else setMe({ ...me, user: { ...me.user, ...user } });
-            }} />
+            <Users
+              currentUserId={me.user.id}
+              api={api}
+              busy={busy}
+              run={run}
+              onCurrentUserUpdated={(user) => {
+                if (user.email !== me.user.email)
+                  window.location.replace("/login");
+                else setMe({ ...me, user: { ...me.user, ...user } });
+              }}
+            />
           )}
           {me.user.role === "admin" &&
-            [
-              "applications",
-              "services",
-              "credentials",
-              "audit",
-            ].includes(page) && (
+            ["applications", "services", "credentials", "audit"].includes(
+              page,
+            ) && (
               <Admin key={page} page={page} api={api} busy={busy} run={run} />
             )}
           {page === "outbox" && me.user.role === "admin" && (

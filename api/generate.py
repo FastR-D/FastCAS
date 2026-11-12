@@ -154,6 +154,7 @@ for path in ("/api/v1/register", "/api/v1/recover", "/api/v1/recover-mfa"):
 add("/api/v1/me", "get", "getMe", "Get the current FastCAS identity and CSRF token", browser, response(ref("Me")))
 add("/api/v1/logout", "post", "logout", "Log out this browser session", browser, response(None, 204))
 add("/api/v1/me/mfa/enroll", "post", "enrollMFA", "Start authenticator enrollment", browser, response(ref("MFAEnroll")))
+add("/api/v1/me/mfa/verify", "post", "verifySessionMFA", "Refresh current session authentication with an authenticator or one-time recovery code; no password required", browser, response(None, 204), body="MFAConfirm")
 add("/api/v1/me/mfa/confirm", "post", "confirmMFA", "Confirm authenticator enrollment", browser, response(ref("MFARecovery")), body="MFAConfirm")
 add("/api/v1/me/mfa/recovery-codes", "post", "rotateMFARecoveryCodes", "Replace all one-time MFA recovery codes after recent password and MFA verification", browser, response(ref("MFARecovery")))
 add("/api/v1/me/reauthenticate", "post", "reauthenticate", "Refresh recent authentication", browser, response(None, 204), body="Reauthenticate")

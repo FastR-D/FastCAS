@@ -256,8 +256,9 @@ try {
   const legacyFlow = await context.request.get(`${origin}/console/?flow=recovery&token=compatibility-check`, { maxRedirects: 0 });
   assert.equal(legacyFlow.headers().location, "/login?flow=recovery&token=compatibility-check", "authenticated legacy recovery link did not move to login");
   const passwordCard = await page.getByRole("heading", { name: "修改 FastCAS 密码" }).locator("..").boundingBox();
-  const identityCard = await page.getByRole("heading", { name: "身份验证", exact: true }).locator("..").boundingBox();
-  assert.ok(Math.abs(passwordCard.width - identityCard.width) < 1, "password card spans two columns");
+  assert.equal(await page.getByRole("heading", { name: "身份验证", exact: true }).count(), 0, "obsolete reauthentication card remains");
+  const mfaCard = await page.getByRole("heading", { name: "双重验证", exact: true }).locator("..").boundingBox();
+  assert.ok(Math.abs(passwordCard.width - mfaCard.width) < 1, "password card spans two columns");
   assert.equal(await page.locator("footer, .sidebar-note").count(), 0, "obsolete footer remains");
   await page.getByLabel("原 FastCAS 密码").fill("invited-reader-password-123");
   await page
@@ -395,14 +396,14 @@ try {
   const uri = await page.getByLabel("认证器配置", { exact: true }).inputValue();
   const qr = page.getByRole("img", { name: "认证器配置二维码" });
   await qr.waitFor();
-  const identityDuringEnrollment = await page.getByRole("heading", { name: "身份验证", exact: true }).locator("..").boundingBox();
   const passwordDuringEnrollment = await page.getByRole("heading", { name: "修改 FastCAS 密码" }).locator("..").boundingBox();
-  assert.ok(Math.abs(passwordDuringEnrollment.y - identityDuringEnrollment.y - identityDuringEnrollment.height - 22) < 1, "tall MFA card leaves a gap above password card");
+  const mfaDuringEnrollment = await page.getByRole("heading", { name: "双重验证", exact: true }).locator("..").boundingBox();
+  assert.ok(Math.abs(passwordDuringEnrollment.y - mfaDuringEnrollment.y) < 1, "tall MFA card displaced the password card");
   await qr.screenshot({ path: "../.local/ui-verification/authenticator-qr.png" });
   await screenshot("security-authenticator-setup");
   await page.getByLabel("认证器动态验证码", { exact: true }).fill(totp(uri));
   await page.getByRole("button", { name: "确认验证码并开启" }).click();
-  await page.getByText("双重验证：已启用").waitFor();
+  await page.getByRole("button", { name: "更新恢复码" }).waitFor();
   const originalRecovery = await page.locator("pre").innerText();
   await page.getByRole("button", { name: "更新恢复码" }).click();
   await acceptConfirmation();
@@ -759,7 +760,7 @@ try {
     .locator("input[name=password]")
     .fill("administrator long password");
   await page.getByRole("button", { name: "登录", exact: true }).click();
-  await page.getByText("双重验证：未启用").waitFor();
+  await page.getByRole("button", { name: "设置认证器" }).waitFor();
   const resetAdminAccess = await page.evaluate(() =>
     fetch("/api/v1/admin/applications", { credentials: "same-origin" }).then(
       (r) => r.status,

@@ -134,7 +134,7 @@ func (s *Store) ConfirmMFA(ctx context.Context, subject, sessionID, code string)
 }
 
 // RotateMFARecoveryCodes replaces every existing code only after recent
-// password and MFA verification on the same live browser session.
+// authentication and MFA verification on the same live browser session.
 func (s *Store) RotateMFARecoveryCodes(ctx context.Context, subject, sessionID string) ([]string, error) {
 	tx, err := s.DB.Begin(ctx)
 	if err != nil {
@@ -220,6 +220,34 @@ func (s *Store) MarkMFA(ctx context.Context, subject, sessionID string) error {
 	}
 	return nil
 }
+
+// StepUpMFA refreshes only the current live session after a one-time second
+// factor. The existing session supplies the first factor; no password is needed.
+func (s *Store) StepUpMFA(ctx context.Context, subject, sessionID, code string) error {
+	if err := s.VerifyMFA(ctx, subject, code); err != nil {
+		return err
+	}
+	tx, err := s.DB.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+	result, err := tx.Exec(ctx, `UPDATE browser_sessions b SET authenticated_at=now(),mfa_at=now()
+ FROM identities i WHERE b.id=$1 AND b.identity_id=$2 AND i.id=b.identity_id
+ AND b.revoked_at IS NULL AND b.expires_at>now() AND i.status='active'
+ AND i.deleted_at IS NULL AND i.mfa_secret IS NOT NULL`, sessionID, subject)
+	if err != nil {
+		return err
+	}
+	if result.RowsAffected() != 1 {
+		return ErrUnauthorized
+	}
+	if err = audit(ctx, tx, subject, "session.step_up", sessionID); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}
+
 func (s *Store) RequireAdmin(ctx context.Context, session *BrowserSession) error {
 	var allowed bool
 	err := s.DB.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM identities i JOIN browser_sessions s ON s.identity_id=i.id WHERE i.id=$1 AND i.role='admin' AND i.status='active' AND i.mfa_secret IS NOT NULL AND s.id=$2 AND s.mfa_at>now()-interval '5 minutes' AND s.revoked_at IS NULL AND s.expires_at>now())`, session.IdentityID, session.ID).Scan(&allowed)
