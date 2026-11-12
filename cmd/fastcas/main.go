@@ -136,6 +136,9 @@ func run() error {
 		if err != nil {
 			return err
 		}
+		if err = api.ConfigureGitHub(os.Getenv("FASTCAS_GITHUB_CLIENT_ID"), os.Getenv("FASTCAS_GITHUB_CLIENT_SECRET"), os.Getenv("FASTCAS_GITHUB_REGISTRATION_ORG")); err != nil {
+			return err
+		}
 		if secret := os.Getenv("FASTCAS_PROXY_SECRET"); secret != "" {
 			if len(secret) < 32 {
 				return errors.New("FASTCAS_PROXY_SECRET must be at least 32 bytes")

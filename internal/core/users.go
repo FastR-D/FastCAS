@@ -32,6 +32,7 @@ func protectLastAdmin(ctx context.Context, tx pgx.Tx, id, role, status string) e
 
 func revokeIdentityAccess(ctx context.Context, tx pgx.Tx, id string) error {
 	for _, statement := range []string{
+		`DELETE FROM github_flows WHERE subject=$1`,
 		`UPDATE browser_sessions SET revoked_at=COALESCE(revoked_at,now()) WHERE identity_id=$1`,
 		`UPDATE token_families SET revoked_at=COALESCE(revoked_at,now()) WHERE subject=$1`,
 		`UPDATE access_tokens SET revoked_at=COALESCE(revoked_at,now()) WHERE subject=$1`,
@@ -136,6 +137,8 @@ func (s *Store) DeleteIdentity(ctx context.Context, actor, id string) error {
 		`UPDATE device_installations SET revoked_at=COALESCE(revoked_at,now()) WHERE subject=$1`,
 		`UPDATE exchange_consents SET revoked_at=COALESCE(revoked_at,now()) WHERE subject=$1`,
 		`DELETE FROM recovery_codes WHERE identity_id=$1`,
+		`DELETE FROM github_accounts WHERE identity_id=$1`,
+		`DELETE FROM github_flows WHERE subject=$1`,
 		`UPDATE identities SET deleted_at=now(),status='disabled',status_version=status_version+1,
 		 email='deleted-'||id||'@deleted.invalid',name='已删除用户',role='member',password_hash='',email_verified=false,
 		 mfa_secret=NULL,pending_mfa_secret=NULL,pending_mfa_expires=NULL,mfa_last_step=-1 WHERE id=$1`,

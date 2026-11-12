@@ -1,5 +1,6 @@
 import {
   EyeOff,
+  Link2,
   Fingerprint,
   KeyRound,
   RefreshCw,
@@ -70,51 +71,61 @@ export function Security({
             </h2>
             <p>{me.user.email}</p>
             <p>双重验证：{me.mfa_enabled ? "已启用" : "未启用"}</p>
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                void run(async () => {
-                  await api("/me/reauthenticate", { password, code });
-                  setPassword("");
-                  setCode("");
-                  onNotice("身份已重新验证");
-                  await refresh();
-                });
-              }}
-            >
-              <label>
-                当前密码
-                <TextField
-                  type="password"
-                  autoComplete="current-password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
-              </label>
-              <label>
-                动态验证码或恢复码
-                <TextField
-                  autoComplete="one-time-code"
-                  value={code}
-                  onChange={(e) => setCode(e.target.value)}
-                />
-              </label>
-              <Button type="submit" variant="primary" disabled={busy}>
-                <Icon icon={Fingerprint} />
-                重新验证身份
-              </Button>
-            </form>
+            {me.password_enabled ? (
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  void run(async () => {
+                    await api("/me/reauthenticate", { password, code });
+                    setPassword("");
+                    setCode("");
+                    onNotice("身份已重新验证");
+                    await refresh();
+                  });
+                }}
+              >
+                <label>
+                  当前密码
+                  <TextField
+                    type="password"
+                    autoComplete="current-password"
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                  />
+                </label>
+                <label>
+                  动态验证码或恢复码
+                  <TextField
+                    autoComplete="one-time-code"
+                    value={code}
+                    onChange={(e) => setCode(e.target.value)}
+                  />
+                </label>
+                <Button type="submit" variant="primary" disabled={busy}>
+                  <Icon icon={Fingerprint} />
+                  重新验证身份
+                </Button>
+              </form>
+            ) : (
+              <p>
+                此账号通过 GitHub 登录。需要重新验证身份时，请
+                <a href="/login">重新使用 GitHub 登录</a>。
+              </p>
+            )}
           </section>
           <section>
             <h2 className="icon-heading">
               <Icon icon={KeyRound} size={18} />
-              修改 FastCAS 密码
+              {me.password_enabled ? "修改 FastCAS 密码" : "设置 FastCAS 密码"}
             </h2>
             <p>
               修改后会退出所有 FastCAS 会话和已关联项目中的 FastCAS
               登录。本地项目密码不变。
             </p>
+            {!me.password_enabled && (
+              <p>请在 GitHub 登录后五分钟内设置密码。设置后也可使用邮箱与密码登录。</p>
+            )}
             <form
               onSubmit={(e) => {
                 e.preventDefault();
@@ -135,16 +146,18 @@ export function Security({
                 });
               }}
             >
-              <label>
-                原 FastCAS 密码
-                <TextField
-                  type="password"
-                  autoComplete="current-password"
-                  required
-                  value={currentPassword}
-                  onChange={(e) => setCurrentPassword(e.target.value)}
-                />
-              </label>
+              {me.password_enabled && (
+                <label>
+                  原 FastCAS 密码
+                  <TextField
+                    type="password"
+                    autoComplete="current-password"
+                    required
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
+                  />
+                </label>
+              )}
               <label>
                 新 FastCAS 密码
                 <TextField
@@ -179,12 +192,44 @@ export function Security({
               )}
               <Button type="submit" variant="primary" disabled={busy}>
                 <Icon icon={KeyRound} />
-                修改 FastCAS 密码
+                {me.password_enabled ? "修改 FastCAS 密码" : "设置 FastCAS 密码"}
               </Button>
             </form>
           </section>
         </div>
         <div className="security-column">
+          {(me.github_enabled || me.github_account) && (
+            <section>
+              <h2 className="icon-heading">
+                <Icon icon={Link2} size={18} />
+                GitHub 登录
+              </h2>
+              {me.github_account ? (
+                <p>已绑定 GitHub：{me.github_account.login}</p>
+              ) : (
+                <>
+                  <p>
+                    绑定后可使用 GitHub 登录当前 FastCAS
+                    账号。绑定前请先重新验证身份；已开启双重验证时也需验证动态验证码。
+                  </p>
+                  <Button
+                    disabled={busy}
+                    onClick={() =>
+                      void run(async () => {
+                        const result = await api<{ authorization_url: string }>(
+                          "/me/github", {},
+                        );
+                        window.location.assign(result.authorization_url);
+                      })
+                    }
+                  >
+                    <Icon icon={Link2} />
+                    绑定 GitHub
+                  </Button>
+                </>
+              )}
+            </section>
+          )}
           <section>
             <h2 className="icon-heading">
               <Icon icon={ShieldCheck} size={18} />
@@ -194,7 +239,7 @@ export function Security({
             {me.mfa_enabled && (
               <>
                 <p>
-                  更新恢复码前，请先用上方表单重新验证密码和动态验证码；旧恢复码会立即失效。
+                  更新恢复码前，请先重新登录或重新验证身份与动态验证码；旧恢复码会立即失效。
                 </p>
                 <Button
                   disabled={busy}

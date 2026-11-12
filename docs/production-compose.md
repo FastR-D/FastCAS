@@ -2,6 +2,8 @@
 
 `compose.prod.yaml` 将 PostgreSQL、FastCAS 置于私有 Compose 网络，仅由 Caddy 发布 80/443。Caddy 为域名申请并续期公开证书；`FASTCAS_ISSUER` 必须是浏览器实际访问的 HTTPS origin，和已注册客户端的 issuer 完全一致。域名 A/AAAA 记录、入站 80/443、防火墙及备份存储需在部署主机上准备。此文件是单主机部署样例，跨主机高可用、监控告警和异地恢复仍需另行设计。
 
+GitHub 登录可在私有环境文件中配置 `FASTCAS_GITHUB_CLIENT_ID` 和 `FASTCAS_GITHUB_CLIENT_SECRET`；生产 Compose 默认 `FASTCAS_GITHUB_REGISTRATION_ORG=FastR-D`，限制新 GitHub 注册；线上新注册用户默认管理员，管理接口仍要求 MFA。配置回调、组织 OAuth 授权与迁移步骤见 [GitHub 登录指南](github-login.md)。
+
 在 `FastCAS/` 目录创建私有环境文件（参考 `compose.prod.env.example`），使用强随机且 URL 安全的数据库密码，并另生成至少 32 字节的 `FASTCAS_PROXY_SECRET`，例如 `openssl rand -hex 32`。不要提交环境文件。以下以 `.local/production.env` 为例；首次启动在空数据卷上执行初始化，后续重启不要再运行 `init-keys` 或 `bootstrap`：
 
 ```bash

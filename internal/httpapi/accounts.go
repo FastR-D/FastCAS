@@ -21,6 +21,7 @@ func (s *Server) accountRoutes(r chi.Router) {
 	r.Post("/api/v1/me/mfa/recovery-codes", s.rotateMFARecoveryCodes)
 	r.Post("/api/v1/me/reauthenticate", s.reauthenticate)
 	r.Post("/api/v1/me/password", s.changePassword)
+	r.Post("/api/v1/me/github", s.githubBind)
 	r.Get("/api/v1/me/links", s.myLinks)
 	r.Post("/api/v1/me/links/{id}/revoke", s.myRevoke)
 	r.Get("/api/v1/me/device-installations", s.myDeviceInstallations)

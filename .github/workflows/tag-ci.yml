@@ -62,6 +62,7 @@ jobs:
       # Code-relative paths are supplied by the trusted FastDeploy server profile.
       runtime-env: |
         FASTCAS_ENV=production
+        FASTCAS_GITHUB_REGISTRATION_ORG=FastR-D
         FASTCAS_ISSUER=https://cas.fastrd.io
         FASTCAS_KEYS_DIR=/home/dev/FastCAS/.local/keys
         FASTCAS_LISTEN=127.0.0.1:8900
@@ -73,5 +74,7 @@ jobs:
       SSH_KNOWN_HOSTS: ${{ secrets.FASTRD_SSH_KNOWN_HOSTS }}
       runtime-secrets: |
         {
-          "FASTCAS_DATABASE_URL": ${{ toJSON(secrets.FASTCAS_DATABASE_URL) }}
+          "FASTCAS_DATABASE_URL": ${{ toJSON(secrets.FASTCAS_DATABASE_URL) }},
+          "FASTCAS_GITHUB_CLIENT_ID": ${{ toJSON(secrets.FASTCAS_GITHUB_CLIENT_ID) }},
+          "FASTCAS_GITHUB_CLIENT_SECRET": ${{ toJSON(secrets.FASTCAS_GITHUB_CLIENT_SECRET) }}
         }

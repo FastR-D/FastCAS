@@ -15,6 +15,9 @@ func (s *Store) FenceRestoredState(ctx context.Context) error {
 		return err
 	}
 	statements := []string{
+		`UPDATE identities SET authentication_version=authentication_version+1`,
+		`DELETE FROM github_flows`,
+		`DELETE FROM github_accounts`,
 		`UPDATE outbox SET dead_at=now(),lease_until=NULL,lease_token=NULL WHERE delivered_at IS NULL AND dead_at IS NULL`,
 		`INSERT INTO outbox(id,client_id,payload,kind)
 		 SELECT gen_random_uuid()::text,l.client_id,jsonb_build_object('subject',l.subject,'sid',''),'logout'

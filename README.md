@@ -8,6 +8,8 @@ FastCAS 是 FastR-D 工具生态的**可选统一身份服务**，后端使用 G
 
 这里的“认证”指证明用户同时控制项目账号和 FastCAS 身份，建立可撤销的绑定；不表示实名、学术资质或组织成员资格认证。FastCAS 不代管项目密码，不自动合并同邮箱账号。
 
+GitHub 登录、注册与已有账号绑定的配置见 [GitHub 登录指南](docs/github-login.md)。线上 GitHub 注册仅允许 FastR-D 组织正式成员。
+
 ## 阅读顺序
 
 1. [项目现状与代码依据](docs/planning/01-project-research.md)

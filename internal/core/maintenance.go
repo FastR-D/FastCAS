@@ -24,6 +24,7 @@ func (s *Store) Maintenance(ctx context.Context) error {
 		return err
 	}
 	for _, query := range []string{
+		`DELETE FROM github_flows WHERE expires_at<now()`,
 		`DELETE FROM auth_requests WHERE expires_at<now()-interval '1 day'`,
 		`DELETE FROM access_tokens WHERE expires_at<now()-interval '1 day'`,
 		`DELETE FROM rate_limits WHERE expires_at<now()-interval '1 day'`,

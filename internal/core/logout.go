@@ -50,6 +50,12 @@ func (s *Store) LogoutAll(ctx context.Context, subject string) error {
 	if err = tx.QueryRow(ctx, `SELECT status='active' FROM identities WHERE id=$1 FOR UPDATE`, subject).Scan(&active); err != nil || !active {
 		return ErrUnauthorized
 	}
+	if _, err = tx.Exec(ctx, `UPDATE identities SET authentication_version=authentication_version+1 WHERE id=$1`, subject); err != nil {
+		return err
+	}
+	if _, err = tx.Exec(ctx, `DELETE FROM github_flows WHERE subject=$1`, subject); err != nil {
+		return err
+	}
 	if _, err = tx.Exec(ctx, `UPDATE browser_sessions SET revoked_at=COALESCE(revoked_at,now()) WHERE identity_id=$1`, subject); err != nil {
 		return err
 	}

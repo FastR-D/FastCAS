@@ -56,7 +56,9 @@ S = {
     "RegisterDeviceInstallation": obj({"installation_id": string(format="uuid")}, ("installation_id",)),
     "RegisteredDeviceInstallation": obj({"installation": ref("DeviceInstallation"), "management_secret": string()}, ("installation", "management_secret"), "The management secret is returned once and only authorizes reading/revoking this installation."),
     "DeviceInstallationPage": obj({"installations": array(ref("DeviceInstallation")), "next_cursor": string()}, ("installations", "next_cursor")),
-    "Me": obj({"user": ref("Identity"), "session": ref("BrowserSession"), "csrf": string(), "mfa_enabled": {"type": "boolean"}}, ("user", "session", "csrf", "mfa_enabled")),
+    "Me": obj({"user": ref("Identity"), "session": ref("BrowserSession"), "csrf": string(), "mfa_enabled": {"type": "boolean"}, "password_enabled": {"type": "boolean"}, "github_enabled": {"type": "boolean"}, "github_account": {"anyOf": [ref("GitHubAccount"), {"type": "null"}]}}, ("user", "session", "csrf", "mfa_enabled", "password_enabled", "github_enabled", "github_account")),
+    "GitHubAccount": obj({"id": integer(format="int64"), "login": string()}, ("id", "login")),
+    "GitHubAuthorization": obj({"authorization_url": string(format="uri")}, ("authorization_url",)),
     "RedeemCredential": obj({"token": string(), "name": string(), "password": string()}, ("token", "password")),
     "RedeemedCredential": obj({"user": ref("Identity"), "login_required": {"type": "boolean"}}, ("user", "login_required")),
     "RedeemMFAReset": obj({"token": string(), "password": string()}, ("token", "password")),
@@ -155,7 +157,8 @@ add("/api/v1/me/mfa/enroll", "post", "enrollMFA", "Start authenticator enrollmen
 add("/api/v1/me/mfa/confirm", "post", "confirmMFA", "Confirm authenticator enrollment", browser, response(ref("MFARecovery")), body="MFAConfirm")
 add("/api/v1/me/mfa/recovery-codes", "post", "rotateMFARecoveryCodes", "Replace all one-time MFA recovery codes after recent password and MFA verification", browser, response(ref("MFARecovery")))
 add("/api/v1/me/reauthenticate", "post", "reauthenticate", "Refresh recent authentication", browser, response(None, 204), body="Reauthenticate")
-add("/api/v1/me/password", "post", "changePassword", "Change the FastCAS password with the current password and MFA when enabled; revoke FastCAS sessions and authorizations", browser, response(None, 204), body="ChangePassword")
+add("/api/v1/me/password", "post", "changePassword", "Change the FastCAS password, or set an initial password within five minutes of GitHub login (empty current_password); require MFA when enabled and revoke sessions and authorizations", browser, response(None, 204), body="ChangePassword")
+add("/api/v1/me/github", "post", "bindGitHub", "Start GitHub account binding after recent authentication and MFA when enabled", browser, response(ref("GitHubAuthorization")))
 add("/api/v1/me/links", "get", "listMyLinks", "List my FastCAS account bindings", browser, response(array(ref("AccountLink"))))
 add("/api/v1/me/links/{id}/revoke", "post", "revokeMyLink", "Revoke my binding after recent authentication", browser, link, body="Version", params=("id",))
 add("/api/v1/device-installations", "post", "registerDeviceInstallation", "Register one local installation after approved device authorization", "deviceAccess", response(ref("RegisteredDeviceInstallation"), 201), body="RegisterDeviceInstallation")

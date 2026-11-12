@@ -27,6 +27,9 @@ services:
       FASTCAS_DATABASE_URL: postgres://fastcas:${FASTCAS_DB_PASSWORD:?set FASTCAS_DB_PASSWORD}@postgres:5432/fastcas?sslmode=disable
       FASTCAS_KEYS_DIR: /state/keys
       FASTCAS_UI_DIR: /opt/fastcas/web
+      FASTCAS_GITHUB_CLIENT_ID: ${FASTCAS_GITHUB_CLIENT_ID:-}
+      FASTCAS_GITHUB_CLIENT_SECRET: ${FASTCAS_GITHUB_CLIENT_SECRET:-}
+      FASTCAS_GITHUB_REGISTRATION_ORG: ${FASTCAS_GITHUB_REGISTRATION_ORG:-FastR-D}
       FASTCAS_PROXY_SECRET: ${FASTCAS_PROXY_SECRET:?set 32-byte random proxy secret}
     volumes:
       - fastcas-keys:/state

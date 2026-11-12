@@ -28,6 +28,7 @@ type Server struct {
 	ProxySecret    string
 	handler        http.Handler
 	authAssets     authAssets
+	github         *gitHubProvider
 }
 
 func New(store *core.Store, issuer string, dev bool) (*Server, error) {
@@ -68,6 +69,9 @@ func New(store *core.Store, issuer string, dev bool) (*Server, error) {
 	})
 	r.Get("/login", s.loginPage)
 	r.Post("/login", s.login)
+	r.Post("/auth/github/start", s.githubStart)
+	r.Get("/auth/github/callback", s.githubCallback)
+	r.Post("/auth/github/mfa", s.githubMFA)
 	r.Get("/device", s.devicePage)
 	r.Post("/device", s.deviceConfirm)
 	r.Get("/api/v1/me", s.me)
@@ -186,6 +190,7 @@ var loginTemplate = authTemplate("login", `<!doctype html><html lang="zh-CN" dat
 {{if .Link}}<p>为项目账号 {{.Link.LocalRef}} 完成 FastCAS 认证。项目密码和内容不会交给 FastCAS。</p>{{else}}<p>允许该应用读取以下身份信息并登录：</p>{{end}}<p>{{.Scopes}}</p>
 <form method="post" action="/login"><input type="hidden" name="csrf" value="{{.CSRF}}"><input type="hidden" name="auth_request_id" value="{{.RequestID}}"><button class="fastui-button fastui-button--primary" name="action" value="approve">确认并继续</button></form>
 {{else}}
+{{if .GitHubEnabled}}<form method="post" action="/auth/github/start"><input type="hidden" name="csrf" value="{{.CSRF}}"><input type="hidden" name="auth_request_id" value="{{.RequestID}}"><input type="hidden" name="return_device" value="{{.ReturnDevice}}"><button class="fastui-button" name="purpose" value="login">使用 GitHub 登录</button><button class="fastui-button" name="purpose" value="register">使用 GitHub 注册</button></form>{{if .GitHubOrg}}<p>GitHub 注册仅限 {{.GitHubOrg}} 组织正式成员。</p>{{end}}{{end}}
 {{if .Assets.Script}}
 <div class="auth-tabs" role="tablist" aria-label="账号服务">
 <a id="login-tab" role="tab" data-auth-tab="login" aria-controls="login-panel" aria-selected="{{if .Register}}false{{else}}true{{end}}" tabindex="{{if .Register}}-1{{else}}0{{end}}" href="{{.LoginURL}}">登录</a>
@@ -216,6 +221,11 @@ func (s *Server) loginPage(w http.ResponseWriter, r *http.Request) {
 	csrf := core.RandomToken()
 	s.setCookie(w, "fastcas_form", csrf, 300)
 	data := map[string]any{"Title": "登录", "Assets": s.authAssets, "CSRF": csrf, "RequestID": r.URL.Query().Get("auth_request_id"), "ReturnDevice": safeDeviceCode(r.URL.Query().Get("return_device"))}
+	if s.github != nil {
+		data["GitHubEnabled"] = true
+		data["GitHubOrg"] = s.github.registrationOrg
+		w.Header().Set("Content-Security-Policy", "default-src 'self'; form-action 'self' https://github.com; frame-ancestors 'none'; base-uri 'none'")
+	}
 	query := r.URL.Query()
 	data["PasswordChanged"] = query.Get("notice") == "password-changed"
 	flow := query.Get("flow")
@@ -243,7 +253,11 @@ func (s *Server) loginPage(w http.ResponseWriter, r *http.Request) {
 		}
 		// Chrome applies form-action to every redirect in the authorization
 		// form's navigation chain, including the registered RP callback.
-		w.Header().Set("Content-Security-Policy", "default-src 'self'; form-action 'self' "+redirect.Scheme+"://"+redirect.Host+"; frame-ancestors 'none'; base-uri 'none'")
+		formOrigins := redirect.Scheme + "://" + redirect.Host
+		if s.github != nil {
+			formOrigins += " https://github.com"
+		}
+		w.Header().Set("Content-Security-Policy", "default-src 'self'; form-action 'self' "+formOrigins+"; frame-ancestors 'none'; base-uri 'none'")
 		client, err := s.Store.Client(r.Context(), a.GetClientID())
 		if err != nil {
 			failure(w, err)
@@ -377,7 +391,17 @@ func (s *Server) me(w http.ResponseWriter, r *http.Request) {
 		failure(w, err)
 		return
 	}
-	send(w, 200, map[string]any{"user": user, "session": session, "csrf": cookie(r, "fastcas_csrf"), "mfa_enabled": enabled})
+	github, err := s.Store.GitHubAccount(r.Context(), user.ID)
+	if err != nil {
+		failure(w, err)
+		return
+	}
+	var passwordEnabled bool
+	if err = s.Store.DB.QueryRow(r.Context(), `SELECT password_hash<>'' FROM identities WHERE id=$1`, user.ID).Scan(&passwordEnabled); err != nil {
+		failure(w, err)
+		return
+	}
+	send(w, 200, map[string]any{"user": user, "session": session, "csrf": cookie(r, "fastcas_csrf"), "mfa_enabled": enabled, "password_enabled": passwordEnabled, "github_enabled": s.github != nil, "github_account": github})
 }
 func (s *Server) logout(w http.ResponseWriter, r *http.Request) {
 	token := cookie(r, "fastcas_session")

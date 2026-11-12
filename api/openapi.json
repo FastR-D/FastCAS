@@ -1455,7 +1455,7 @@
     "/api/v1/me/password": {
       "post": {
         "operationId": "changePassword",
-        "summary": "Change the FastCAS password with the current password and MFA when enabled; revoke FastCAS sessions and authorizations",
+        "summary": "Change the FastCAS password, or set an initial password within five minutes of GitHub login (empty current_password); require MFA when enabled and revoke sessions and authorizations",
         "tags": [
           "Security center"
         ],
@@ -1525,6 +1525,103 @@
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/ChangePassword"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uri"
+            },
+            "description": "Must exactly match the configured FastCAS issuer."
+          },
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Token from the browser's authenticated /api/v1/me response."
+          }
+        ]
+      }
+    },
+    "/api/v1/me/github": {
+      "post": {
+        "operationId": "bindGitHub",
+        "summary": "Start GitHub account binding after recent authentication and MFA when enabled",
+        "tags": [
+          "Security center"
+        ],
+        "security": [
+          {
+            "browserSession": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GitHubAuthorization"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid or expired request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden or recent MFA required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
               }
             }
           }
@@ -5265,6 +5362,22 @@
           },
           "mfa_enabled": {
             "type": "boolean"
+          },
+          "password_enabled": {
+            "type": "boolean"
+          },
+          "github_enabled": {
+            "type": "boolean"
+          },
+          "github_account": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GitHubAccount"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "additionalProperties": false,
@@ -5272,7 +5385,40 @@
           "user",
           "session",
           "csrf",
-          "mfa_enabled"
+          "mfa_enabled",
+          "password_enabled",
+          "github_enabled",
+          "github_account"
+        ]
+      },
+      "GitHubAccount": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "login": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "login"
+        ]
+      },
+      "GitHubAuthorization": {
+        "type": "object",
+        "properties": {
+          "authorization_url": {
+            "type": "string",
+            "format": "uri"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "authorization_url"
         ]
       },
       "RedeemCredential": {

@@ -302,6 +302,9 @@ func (s *Store) RedeemMFAReset(ctx context.Context, raw, password, peer string) 
 	if _, err = tx.Exec(ctx, `DELETE FROM recovery_codes WHERE identity_id=$1`, id); err != nil {
 		return err
 	}
+	if _, err = tx.Exec(ctx, `DELETE FROM github_flows WHERE subject=$1`, id); err != nil {
+		return err
+	}
 	if _, err = tx.Exec(ctx, `UPDATE browser_sessions SET revoked_at=COALESCE(revoked_at,now()) WHERE identity_id=$1`, id); err != nil {
 		return err
 	}
@@ -340,7 +343,17 @@ func (s *Store) ChangePassword(ctx context.Context, subject, sessionID, current,
 	if err != nil {
 		return err
 	}
-	if _, err = s.Authenticate(ctx, u.Email, current, peer); err != nil {
+	var passwordEnabled bool
+	if err = s.DB.QueryRow(ctx, `SELECT password_hash<>'' FROM identities WHERE id=$1`, subject).Scan(&passwordEnabled); err != nil {
+		return err
+	}
+	if passwordEnabled {
+		if _, err = s.Authenticate(ctx, u.Email, current, peer); err != nil {
+			return err
+		}
+	} else if current != "" {
+		return ErrUnauthorized
+	} else if err = s.RequireRecentAccountAuth(ctx, subject, sessionID); err != nil {
 		return err
 	}
 	enabled, err := s.MFAEnabled(ctx, subject)
@@ -358,15 +371,21 @@ func (s *Store) ChangePassword(ctx context.Context, subject, sessionID, current,
 	}
 	defer tx.Rollback(ctx)
 	var oldHash string
-	var stillEnabled bool
-	err = tx.QueryRow(ctx, `SELECT i.password_hash,i.mfa_secret IS NOT NULL FROM identities i
+	var stillEnabled, canSetInitial bool
+	err = tx.QueryRow(ctx, `SELECT i.password_hash,i.mfa_secret IS NOT NULL,
+ (b.authenticated_at>now()-interval '5 minutes' AND EXISTS(SELECT 1 FROM github_accounts g WHERE g.identity_id=i.id)) FROM identities i
  JOIN browser_sessions b ON b.identity_id=i.id WHERE i.id=$1 AND b.id=$2
  AND i.status='active' AND b.revoked_at IS NULL AND b.expires_at>now()
- FOR UPDATE OF i,b`, subject, sessionID).Scan(&oldHash, &stillEnabled)
-	if err != nil || stillEnabled != enabled || !PasswordMatches(current, oldHash) {
+ FOR UPDATE OF i,b`, subject, sessionID).Scan(&oldHash, &stillEnabled, &canSetInitial)
+	validPassword := passwordEnabled && PasswordMatches(current, oldHash)
+	validInitial := !passwordEnabled && oldHash == "" && current == "" && canSetInitial
+	if err != nil || stillEnabled != enabled || !(validPassword || validInitial) {
 		return ErrUnauthorized
 	}
 	if _, err = tx.Exec(ctx, `UPDATE identities SET password_hash=$2 WHERE id=$1`, subject, encoded); err != nil {
+		return err
+	}
+	if _, err = tx.Exec(ctx, `DELETE FROM github_flows WHERE subject=$1`, subject); err != nil {
 		return err
 	}
 	if _, err = tx.Exec(ctx, `UPDATE browser_sessions SET revoked_at=COALESCE(revoked_at,now()) WHERE identity_id=$1`, subject); err != nil {
@@ -421,6 +440,9 @@ func (s *Store) RedeemCredential(ctx context.Context, kind, raw, name, password 
 		_, err = tx.Exec(ctx, `INSERT INTO identities(id,email,name,password_hash) VALUES($1,$2,$3,$4)`, id, email, name, encoded)
 	} else {
 		err = tx.QueryRow(ctx, `UPDATE identities SET password_hash=$2 WHERE email=$1 AND status='active' RETURNING id`, email, encoded).Scan(&id)
+		if err == nil {
+			_, err = tx.Exec(ctx, `DELETE FROM github_flows WHERE subject=$1`, id)
+		}
 		if err == nil {
 			_, err = tx.Exec(ctx, `UPDATE browser_sessions SET revoked_at=COALESCE(revoked_at,now()) WHERE identity_id=$1`, id)
 		}
@@ -495,6 +517,9 @@ func (s *Store) SetIdentityStatus(ctx context.Context, actor, id, status string)
 		return err
 	}
 	if status == "disabled" {
+		if _, err = tx.Exec(ctx, `DELETE FROM github_flows WHERE subject=$1`, id); err != nil {
+			return err
+		}
 		if _, err = tx.Exec(ctx, `UPDATE browser_sessions SET revoked_at=COALESCE(revoked_at,now()) WHERE identity_id=$1`, id); err != nil {
 			return err
 		}
