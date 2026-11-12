@@ -27,13 +27,6 @@ import {
 } from "@fastrd/ui-react";
 import { useEffect, useState } from "react";
 type API = <T>(path: string, body?: unknown) => Promise<T>;
-type Identity = {
-  id: string;
-  email: string;
-  name: string;
-  role: string;
-  status: string;
-};
 type ServiceAccount = {
   client: Application;
   active: boolean;
@@ -51,11 +44,9 @@ export function Admin({
   run: (work: () => Promise<void>) => Promise<void>;
 }) {
   const confirm = useConfirm();
-  const [identities, setIdentities] = useState<Identity[]>([]),
-    [applications, setApplications] = useState<Application[]>([]),
+  const [applications, setApplications] = useState<Application[]>([]),
     [services, setServices] = useState<ServiceAccount[]>([]);
-  const [identityCursor, setIdentityCursor] = useState(""),
-    [applicationCursor, setApplicationCursor] = useState(""),
+  const [applicationCursor, setApplicationCursor] = useState(""),
     [serviceCursor, setServiceCursor] = useState("");
   const [kind, setKind] = useState<"invite" | "recovery" | "mfa_reset">(
       "invite",
@@ -81,14 +72,6 @@ export function Admin({
     [serviceName, setServiceName] = useState(""),
     [serviceScopes, setServiceScopes] = useState(""),
     [serviceResources, setServiceResources] = useState("");
-  async function loadIdentities(after = "") {
-    const items = await api<Identity[]>(
-      "/admin/identities" +
-        (after ? "?after=" + encodeURIComponent(after) : ""),
-    );
-    setIdentities((old) => (after ? [...old, ...items] : items));
-    setIdentityCursor(items.length === 100 ? items[items.length - 1].id : "");
-  }
   async function loadApplications(after = "") {
     const items = await api<Application[]>(
       "/admin/applications" +
@@ -111,70 +94,10 @@ export function Admin({
   }
   useEffect(() => {
     void run(async () => {
-      if (page === "identities") await loadIdentities();
       if (page === "applications") await loadApplications();
       if (page === "services") await loadServices();
     });
   }, [page]);
-  if (page === "identities")
-    return (
-      <section>
-        <h2>身份管理</h2>
-        {!busy && !identities.length && <EmptyState title="暂无身份记录" />}
-        <p>状态变更会影响中心身份；操作需要近期双重验证。</p>
-        {identities.map((person) => (
-          <article key={person.id}>
-            <div>
-              <strong>{person.name}</strong>
-              <p>
-                {person.email} · {person.role} · {person.status}
-              </p>
-            </div>
-            <Button
-              disabled={busy}
-              onClick={async () => {
-                if (await confirm(`确认更改 ${person.email} 的身份状态？`))
-                  void run(async () => {
-                    await api(
-                      "/admin/identities/" +
-                        encodeURIComponent(person.id) +
-                        "/status",
-                      {
-                        status:
-                          person.status === "active" ? "disabled" : "active",
-                      },
-                    );
-                    setIdentities((old) =>
-                      old.map((item) =>
-                        item.id === person.id
-                          ? {
-                              ...item,
-                              status:
-                                item.status === "active"
-                                  ? "disabled"
-                                  : "active",
-                            }
-                          : item,
-                      ),
-                    );
-                  });
-              }}
-            >
-              {person.status === "active" ? "停用" : "启用"}
-            </Button>
-          </article>
-        ))}
-        {identityCursor && (
-          <Button
-            disabled={busy}
-            onClick={() => void run(() => loadIdentities(identityCursor))}
-          >
-            <Icon icon={ChevronDown} />
-            加载更多身份
-          </Button>
-        )}
-      </section>
-    );
   if (page === "credentials")
     return (
       <section>

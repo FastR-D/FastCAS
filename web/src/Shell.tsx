@@ -38,7 +38,7 @@ const groups: { label: string; items: [string, string, LucideIcon][] }[] = [
   {
     label: "组织管理",
     items: [
-      ["identities", "身份管理", Users],
+      ["identities", "用户管理", Users],
       ["applications", "应用管理", AppWindow],
       ["services", "服务身份", Bot],
       ["exchange-policies", "调用策略", GitBranch],

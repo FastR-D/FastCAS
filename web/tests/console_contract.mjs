@@ -412,15 +412,65 @@ try {
     originalRecovery,
     "recovery codes did not rotate",
   );
-  await page.getByRole("button", { name: "身份管理" }).click();
-  await page.getByRole("heading", { name: "身份管理" }).waitFor();
+  await page.getByRole("button", { name: "用户管理" }).click();
+  await page.getByRole("heading", { name: "用户管理" }).waitFor();
   assert.equal(
     await page.getByText("zz-user-105@example.test").count(),
     0,
     "old identity was visible before pagination",
   );
-  await page.getByRole("button", { name: "加载更多身份" }).click();
+  await page.getByRole("button", { name: "加载更多用户" }).click();
   await page.getByText("zz-user-105@example.test").waitFor();
+  const usersTable = page.getByRole("table", { name: "用户列表" });
+  await usersTable.waitFor();
+  const managedRow = usersTable.getByRole("row").filter({ hasText: "zz-user-105@example.test" });
+  await managedRow.getByRole("button", { name: "编辑", exact: true }).click();
+  let userEditor = page.getByRole("dialog", { name: "编辑用户", exact: true });
+  await userEditor.getByLabel("姓名", { exact: true }).fill("Edited Test User");
+  await userEditor.getByLabel("邮箱", { exact: true }).fill("admin@example.test");
+  await userEditor.getByRole("button", { name: "保存用户", exact: true }).click();
+  await userEditor.getByRole("alert").getByText("邮箱已被占用", { exact: false }).waitFor();
+  assert.equal(await userEditor.getByLabel("姓名", { exact: true }).inputValue(), "Edited Test User", "failed edit lost draft");
+  await userEditor.getByLabel("邮箱", { exact: true }).fill("managed-edited@example.test");
+  await userEditor.getByLabel("角色", { exact: true }).selectOption("admin");
+  await userEditor.getByRole("button", { name: "保存用户", exact: true }).click();
+  await userEditor.waitFor({ state: "hidden" });
+  const editedRow = usersTable.getByRole("row").filter({ hasText: "managed-edited@example.test" });
+  await editedRow.getByText("Edited Test User", { exact: true }).waitFor();
+  await editedRow.getByText("管理员", { exact: true }).waitFor();
+  await editedRow.getByRole("button", { name: "编辑", exact: true }).click();
+  userEditor = page.getByRole("dialog", { name: "编辑用户", exact: true });
+  await userEditor.getByLabel("姓名", { exact: true }).fill("Cancelled Change");
+  await userEditor.getByRole("button", { name: "取消", exact: true }).click();
+  await editedRow.getByText("Edited Test User", { exact: true }).waitFor();
+  const selfRow = usersTable.getByRole("row").filter({ hasText: "admin@example.test" });
+  assert.equal(await selfRow.getByRole("button", { name: "删除", exact: true }).isDisabled(), true);
+  await selfRow.getByRole("button", { name: "编辑", exact: true }).click();
+  userEditor = page.getByRole("dialog", { name: "编辑用户", exact: true });
+  assert.equal(await userEditor.getByLabel("角色", { exact: true }).isDisabled(), true);
+  await userEditor.getByRole("button", { name: "取消", exact: true }).click();
+  await editedRow.getByRole("button", { name: "停用", exact: true }).click();
+  await acceptConfirmation();
+  await editedRow.getByText("已停用", { exact: true }).waitFor();
+  await editedRow.getByRole("button", { name: "启用", exact: true }).click();
+  await acceptConfirmation();
+  await editedRow.getByText("正常", { exact: true }).waitFor();
+  await editedRow.scrollIntoViewIfNeeded();
+  await page.screenshot({ path: "../.local/ui-verification/user-management-light.png" });
+  await page.getByLabel("界面主题").selectOption("dark");
+  await page.screenshot({ path: "../.local/ui-verification/user-management-dark.png" });
+  await page.getByLabel("界面主题").selectOption("light");
+  await editedRow.getByRole("button", { name: "删除", exact: true }).click();
+  await page.getByRole("dialog", { name: "确认操作" }).getByRole("button", { name: "取消", exact: true }).click();
+  await editedRow.waitFor();
+  await editedRow.getByRole("button", { name: "删除", exact: true }).click();
+  await acceptConfirmation();
+  await editedRow.waitFor({ state: "hidden" });
+  await page.getByRole("button", { name: "刷新用户", exact: true }).click();
+  await page.getByRole("button", { name: "加载更多用户", exact: true }).click();
+  assert.equal(await usersTable.getByText("managed-edited@example.test", { exact: true }).count(), 0, "deleted user returned after refresh");
+  integrationChecks.push({ userManagement: "edit-conflict-retry-cancel-status-delete", selfProtection: true });
+
   await page.getByRole("button", { name: "审计", exact: true }).click();
   await page.getByRole("heading", { name: "最近审计" }).waitFor();
   assert.equal(

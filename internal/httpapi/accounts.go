@@ -34,6 +34,8 @@ func (s *Server) accountRoutes(r chi.Router) {
 	r.Get("/api/v1/me/delegations", s.delegations)
 	r.Post("/api/v1/me/delegations", s.setDelegation)
 	r.Get("/api/v1/admin/identities", s.identities)
+	r.Post("/api/v1/admin/identities/{id}", s.updateIdentity)
+	r.Post("/api/v1/admin/identities/{id}/delete", s.deleteIdentity)
 	r.Post("/api/v1/admin/identities/{id}/status", s.identityStatus)
 	r.Post("/api/v1/admin/credentials", s.issueCredential)
 	r.Get("/api/v1/admin/applications", s.applications)
@@ -365,16 +367,16 @@ func (s *Server) identities(w http.ResponseWriter, r *http.Request) {
 	if _, ok := s.authenticated(w, r, true); !ok {
 		return
 	}
-	rows, err := s.Store.DB.Query(r.Context(), `SELECT id,email,name,role,status,email_verified FROM identities WHERE id>$1 ORDER BY id LIMIT 100`, r.URL.Query().Get("after"))
+	rows, err := s.Store.DB.Query(r.Context(), `SELECT id,email,name,role,status,email_verified,created_at,mfa_secret IS NOT NULL FROM identities WHERE id>$1 AND deleted_at IS NULL ORDER BY id LIMIT 100`, r.URL.Query().Get("after"))
 	if err != nil {
 		failure(w, err)
 		return
 	}
 	defer rows.Close()
-	list := []core.Identity{}
+	list := []core.ManagedIdentity{}
 	for rows.Next() {
-		var i core.Identity
-		if err = rows.Scan(&i.ID, &i.Email, &i.Name, &i.Role, &i.Status, &i.EmailVerified); err != nil {
+		var i core.ManagedIdentity
+		if err = rows.Scan(&i.ID, &i.Email, &i.Name, &i.Role, &i.Status, &i.EmailVerified, &i.CreatedAt, &i.MFAEnabled); err != nil {
 			failure(w, err)
 			return
 		}
@@ -385,6 +387,54 @@ func (s *Server) identities(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	send(w, 200, list)
+}
+func (s *Server) updateIdentity(w http.ResponseWriter, r *http.Request) {
+	session, ok := s.authenticated(w, r, true)
+	if !ok {
+		return
+	}
+	var input struct {
+		Name  string `json:"name"`
+		Email string `json:"email"`
+		Role  string `json:"role"`
+	}
+	if decode(r, &input) != nil {
+		problem(w, 400, "invalid_user", "请填写有效的姓名、邮箱和角色")
+		return
+	}
+	user, err := s.Store.UpdateIdentity(r.Context(), session.IdentityID, chi.URLParam(r, "id"), input.Email, input.Name, input.Role)
+	if err != nil {
+		if err == core.ErrConflict {
+			problem(w, 409, "user_conflict", "邮箱已被占用，或该操作会移除最后一名管理员")
+			return
+		}
+		if err == core.ErrForbidden {
+			problem(w, 403, "user_update_forbidden", "用户不存在、资料无效，或正在更改自己的角色")
+			return
+		}
+		failure(w, err)
+		return
+	}
+	send(w, 200, user)
+}
+func (s *Server) deleteIdentity(w http.ResponseWriter, r *http.Request) {
+	session, ok := s.authenticated(w, r, true)
+	if !ok {
+		return
+	}
+	if err := s.Store.DeleteIdentity(r.Context(), session.IdentityID, chi.URLParam(r, "id")); err != nil {
+		if err == core.ErrConflict {
+			problem(w, 409, "last_administrator", "不能删除最后一名可用管理员")
+			return
+		}
+		if err == core.ErrForbidden {
+			problem(w, 403, "user_delete_forbidden", "不能删除当前账号或已删除的用户")
+			return
+		}
+		failure(w, err)
+		return
+	}
+	w.WriteHeader(204)
 }
 func (s *Server) identityStatus(w http.ResponseWriter, r *http.Request) {
 	session, ok := s.authenticated(w, r, true)

@@ -13,6 +13,7 @@ import { Shell } from "./Shell";
 import { Admin } from "./Admin";
 import { Delegations } from "./Delegations";
 import { Integration } from "./Integration";
+import { Users } from "./Users";
 type Link = {
   id: string;
   client_id: string;
@@ -386,9 +387,14 @@ function App() {
               ))}
             </section>
           )}
+          {page === "identities" && me.user.role === "admin" && (
+            <Users currentUserId={me.user.id} api={api} busy={busy} run={run} onCurrentUserUpdated={(user) => {
+              if (user.email !== me.user.email) window.location.replace("/login");
+              else setMe({ ...me, user: { ...me.user, ...user } });
+            }} />
+          )}
           {me.user.role === "admin" &&
             [
-              "identities",
               "applications",
               "services",
               "credentials",

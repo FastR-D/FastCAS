@@ -504,6 +504,65 @@ article:last-of-type {
   overflow-x: auto;
   margin: 0 0 18px;
 }
+.users-table-wrap {
+  overflow: auto;
+  max-height: 65vh;
+  margin: 24px 0 18px;
+}
+.users-table {
+  width: 100%;
+  min-width: 1000px;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 12px;
+}
+.users-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--fastui-page);
+  color: var(--fastui-muted);
+  padding: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.users-table td {
+  border-bottom: 1px solid var(--fastui-border);
+  padding: 16px 12px;
+  vertical-align: middle;
+  overflow-wrap: anywhere;
+  line-height: 1.7;
+}
+.users-table td:first-child { max-width: 180px; }
+.users-table td:nth-child(2) { max-width: 250px; }
+.users-table small {
+  display: block;
+  color: var(--fastui-muted);
+  font-size: 10px;
+}
+.users-table time { display: block; min-width: 100px; }
+.user-actions {
+  display: flex;
+  gap: 6px;
+  white-space: nowrap;
+}
+.user-actions .fastui-button {
+  padding: 6px 8px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.current-user {
+  display: inline-block;
+  margin-left: 6px;
+  color: var(--fastui-focus);
+  font-size: 10px;
+}
+.users-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
 .audit-table {
   width: 100%;
   border-collapse: collapse;

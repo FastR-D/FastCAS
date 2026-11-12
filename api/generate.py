@@ -79,6 +79,9 @@ S = {
     "ApplicationCapabilities": obj({"grant_types": ref("StringList"), "scopes": ref("StringList"), "resources": ref("StringList")}, ("grant_types", "scopes", "resources")),
 }
 
+S["ManagedIdentity"] = obj({**S["Identity"]["properties"], "created_at": string(format="date-time"), "mfa_enabled": {"type": "boolean"}}, (*S["Identity"]["required"], "created_at", "mfa_enabled"))
+S["UpdateIdentity"] = obj({"name": string(minLength=1, maxLength=200), "email": string(format="email", maxLength=254), "role": string(enum=["member", "admin"])}, ("name", "email", "role"))
+
 S["OneTimeSecret"] = obj({"client_secret": string()}, ("client_secret",), "The credential is returned once and never included in list responses.")
 S["CreatedServiceAccount"] = obj({"id": string(), "client_secret": string()}, ("id", "client_secret"))
 S["ServiceStatusResult"] = obj({"active": {"type": "boolean"}, "client_secret": string()}, ("active", "client_secret"))
@@ -166,7 +169,9 @@ add("/api/v1/me/logout-all", "post", "logoutAll", "Revoke all FastCAS browser se
 add("/api/v1/me/delegations", "get", "listMyDelegations", "List available cross-project delegation options", browser, response(array(ref("ExchangePolicy"))))
 add("/api/v1/me/delegations", "post", "setMyDelegation", "Set my cross-project delegation consent", browser, response(None, 204), body="ExchangePolicy")
 
-add("/api/v1/admin/identities", "get", "listIdentities", "List FastCAS identities", admin, response(array(ref("Identity"))), params=("after",))
+add("/api/v1/admin/identities", "get", "listIdentities", "List FastCAS users", admin, response(array(ref("ManagedIdentity"))), params=("after",))
+add("/api/v1/admin/identities/{id}", "post", "updateIdentity", "Edit a FastCAS user's name, email and role", admin, response(ref("ManagedIdentity")), body="UpdateIdentity", params=("id",), description="Email/role changes revoke existing FastCAS sessions and authorizations. The current user cannot change their own role; the last active administrator is protected.")
+add("/api/v1/admin/identities/{id}/delete", "post", "deleteIdentity", "Delete a FastCAS user and revoke sessions, bindings and authorizations", admin, response(None, 204), params=("id",), description="Removes the user from lists, clears credentials and profile, and retains an inactive subject tombstone and audit history. Self-deletion and removal of the last active administrator are rejected. Project-local accounts and content are preserved.")
 add("/api/v1/admin/identities/{id}/status", "post", "setIdentityStatus", "Enable or disable a FastCAS identity", admin, response(None, 204), body="IdentityStatus", params=("id",))
 add("/api/v1/admin/credentials", "post", "issueCredential", "Issue a one-time invitation, password recovery, or MFA reset credential", admin, response(ref("CreatedCredential"), 201), body="IssueCredential")
 add("/api/v1/admin/applications", "get", "listApplications", "List registered applications", admin, response(array(ref("Client"))), params=("after",))

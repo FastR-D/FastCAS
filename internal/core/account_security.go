@@ -465,7 +465,7 @@ func (s *Store) SetIdentityStatus(ctx context.Context, actor, id, status string)
 		return err
 	}
 	var role, current string
-	if err = tx.QueryRow(ctx, `SELECT role,status FROM identities WHERE id=$1 FOR UPDATE`, id).Scan(&role, &current); err != nil {
+	if err = tx.QueryRow(ctx, `SELECT role,status FROM identities WHERE id=$1 AND deleted_at IS NULL FOR UPDATE`, id).Scan(&role, &current); err != nil {
 		return ErrForbidden
 	}
 	if current == status {
