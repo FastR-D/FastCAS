@@ -26,22 +26,27 @@ with httpx.Client(follow_redirects=False) as browser:
     sdk = FastCAS(Configuration(issuer=issuer, client_id="write", client_secret="integration-client-secret-32-characters-long", redirect_uri="http://127.0.0.1:3003/callback", allow_loopback_http=True), MemoryTransactions())
 
     def complete(url):
-        response = browser.get(url)
-        assert response.status_code == 302
-        login_url = urljoin(issuer, response.headers["location"])
-        request_id = parse_qs(urlparse(login_url).query)["auth_request_id"][0]
-        body = browser.get(login_url).text
-        if 'name="password"' in body:
-            csrf = re.search(r'name="csrf" value="([^"]+)"', body)[1]
-            response = browser.post(issuer+"/login", data=dict(csrf=csrf, auth_request_id=request_id, email="alice@example.test", password="correct horse battery staple", action="login"), headers={"Origin": issuer})
-            assert response.status_code == 303
-            body = browser.get(urljoin(issuer, response.headers["location"])).text
-        csrf = re.search(r'name="csrf" value="([^"]+)"', body)[1]
-        response = browser.post(issuer+"/login", data=dict(csrf=csrf, auth_request_id=request_id, action="approve"), headers={"Origin": issuer})
-        assert response.status_code == 303
-        response = browser.get(urljoin(issuer, response.headers["location"]))
-        assert response.status_code == 302
-        return response.headers["location"]
+        form = None
+        for _ in range(10):
+            response = browser.get(url) if form is None else browser.post(url, data=form, headers={"Origin": issuer})
+            if response.status_code in (302, 303):
+                url = urljoin(issuer, response.headers["location"])
+                if urlparse(url).netloc != urlparse(issuer).netloc:
+                    return url
+                form = None
+                continue
+            assert response.status_code == 200
+            body = response.text
+            csrf = re.search(r'name="csrf" value="([^"]+)"', body)
+            assert csrf, "Authorization form missing CSRF"
+            form = dict(csrf=csrf[1], auth_request_id=parse_qs(urlparse(url).query)["auth_request_id"][0])
+            if 'name="password"' in body:
+                form.update(email="alice@example.test", password="correct horse battery staple", action="login")
+            else:
+                assert 'value="approve"' in body
+                form["action"] = "approve"
+            url = issuer + "/login"
+        raise AssertionError("Authorization redirect loop")
 
     binding = secrets.token_urlsafe(32)
     callback = complete(sdk.begin_login(binding, scopes=["openid", "profile", "email", "offline_access"]))

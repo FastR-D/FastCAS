@@ -15,23 +15,25 @@ async function browser(url, form) {
 }
 
 async function complete(url) {
-  let response = await browser(url);
-  assert.equal(response.status, 302);
-  const login = new URL(response.headers.get("location"), issuer);
-  let body = await (await browser(login)).text();
-  const request = login.searchParams.get("auth_request_id");
-  if (body.includes('name="password"')) {
-    const csrf = body.match(/name="csrf" value="([^"]+)"/)[1];
-    response = await browser(issuer + "/login", { csrf, auth_request_id: request, email: "alice@example.test", password: "correct horse battery staple", action: "login" });
-    assert.equal(response.status, 303);
-    body = await (await browser(new URL(response.headers.get("location"), issuer))).text();
+  let destination = new URL(url), form;
+  for (let step = 0; step < 10; step++) {
+    const response = await browser(destination, form);
+    if (response.status === 302 || response.status === 303) {
+      destination = new URL(response.headers.get("location"), issuer);
+      if (destination.origin !== new URL(issuer).origin) return destination;
+      form = undefined;
+      continue;
+    }
+    assert.equal(response.status, 200);
+    const body = await response.text();
+    const csrf = body.match(/name="csrf" value="([^"]+)"/);
+    assert.ok(csrf, "Authorization form missing CSRF");
+    form = { csrf: csrf[1], auth_request_id: destination.searchParams.get("auth_request_id") };
+    if (body.includes('name="password"')) Object.assign(form, { email: "alice@example.test", password: "correct horse battery staple", action: "login" });
+    else { assert.ok(body.includes('value="approve"')); form.action = "approve"; }
+    destination = new URL("/login", issuer);
   }
-  const csrf = body.match(/name="csrf" value="([^"]+)"/)[1];
-  response = await browser(issuer + "/login", { csrf, auth_request_id: request, action: "approve" });
-  assert.equal(response.status, 303);
-  response = await browser(new URL(response.headers.get("location"), issuer));
-  assert.equal(response.status, 302);
-  return new URL(response.headers.get("location"));
+  throw new Error("Authorization redirect loop");
 }
 
 const binding = "test-browser-binding-long-enough-for-sid-contract";
