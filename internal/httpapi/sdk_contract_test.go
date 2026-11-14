@@ -58,7 +58,7 @@ func TestPythonSDKRealProviderSIDContract(t *testing.T) {
 	pythonPath := filepath.Join(root, "sdk/python/src")
 	python := os.Getenv("FASTCAS_PYTHON_CONTRACT")
 	if python == "" {
-		python = "python"
+		python = filepath.Join(root, ".venv", "bin", "python")
 	}
 	runSDKContract(t, python, []string{"tests/sid_contract.py"}, "sdk/python", "PYTHONPATH="+pythonPath)
 }
