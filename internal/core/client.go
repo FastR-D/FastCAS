@@ -53,7 +53,9 @@ func (c *Client) AccessTokenType() op.AccessTokenType { return op.AccessTokenTyp
 func (c *Client) IDTokenLifetime() time.Duration      { return 5 * time.Minute }
 func (c *Client) DevMode() bool                       { return c.Development }
 func (c *Client) RestrictAdditionalIdTokenScopes() func([]string) []string {
-	return func([]string) []string { return nil }
+	// Preserve the request scope so the provider reaches SetUserinfoFromRequest
+	// and can add request-bound claims such as the browser session ID.
+	return func(v []string) []string { return v }
 }
 func (c *Client) RestrictAdditionalAccessTokenScopes() func([]string) []string {
 	return func(v []string) []string { return v }
