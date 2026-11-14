@@ -53,6 +53,7 @@ with tempfile.TemporaryDirectory() as temp, httpx.Client(follow_redirects=False)
     result = sdk.finish_login(callback, binding)
     assert result["identity"]["email"] == "alice@example.test"
     assert result["identity"]["name"] == "Alice"
+    assert result["identity"]["sid"], "Python SDK did not retain ID token sid"
     rejected(lambda: sdk.finish_login(callback, binding), "transaction_invalid")
     sdk.verify_access_token(result["tokens"]["access_token"], "write")
     assert sdk.introspect_token(result["tokens"]["access_token"])["active"] is True

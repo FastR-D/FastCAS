@@ -59,6 +59,9 @@ func TestGoSDKLoginAndLinkContract(t *testing.T) {
 	if result.Identity.Email != "alice@example.test" || result.Identity.Name != "Alice" {
 		t.Fatal("profile mismatch")
 	}
+	if result.Identity.SessionID == "" {
+		t.Fatal("Go SDK did not retain ID token sid")
+	}
 	if _, err = client.FinishLogin(ctx, callback, fastcas.FinishOptions{BrowserBinding: binding}); err == nil {
 		t.Fatal("callback replay accepted")
 	}
