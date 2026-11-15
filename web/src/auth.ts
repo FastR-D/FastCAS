@@ -1,7 +1,8 @@
 import { createElement } from "react";
 import { createRoot } from "react-dom/client";
 import { Guest, takeInitialCredential } from "./Guest";
-import "@fastrd/ui-react/styles.css";
+import "@fastrd/ui-foundation/tokens.css";
+import "@fastrd/ui-foundation/controls.css";
 import "./auth.css";
 
 // Authentication remains a native, server-validated form, including without JavaScript.
