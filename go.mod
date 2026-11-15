@@ -5,13 +5,13 @@ go 1.26.0
 toolchain go1.26.8
 
 require (
-	github.com/go-jose/go-jose/v4 v4.1.4
+	github.com/go-jose/go-jose/v4 v4.1.9
 	github.com/jackc/pgx/v5 v5.7.6
 	github.com/zitadel/oidc/v3 v3.51.3
 	golang.org/x/crypto v0.53.0
 )
 
-require github.com/coreos/go-oidc/v3 v3.21.0 // indirect
+require github.com/coreos/go-oidc/v3 v3.21.0
 
 require (
 	github.com/FastR-D/FastCAS/sdk/go v0.1.2
@@ -34,7 +34,7 @@ require (
 	go.opentelemetry.io/otel v1.45.0 // indirect
 	go.opentelemetry.io/otel/metric v1.45.0 // indirect
 	go.opentelemetry.io/otel/trace v1.45.0 // indirect
-	golang.org/x/oauth2 v0.36.0 // indirect
+	golang.org/x/oauth2 v0.38.0 // indirect
 	golang.org/x/sync v0.22.0 // indirect
 	golang.org/x/sys v0.46.0 // indirect
 	golang.org/x/text v0.41.0 // indirect
