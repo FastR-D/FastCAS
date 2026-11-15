@@ -5,7 +5,8 @@ import { useConfirm, ConfirmProvider } from "./Confirm";
 import { Button } from "@fastrd/ui-react";
 import React, { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
-import "@fastrd/ui-react/styles.css";
+import "@fastrd/ui-foundation/tokens.css";
+import "@fastrd/ui-foundation/controls.css";
 import "./style.css";
 import { Alert, EmptyState, Loading } from "@fastrd/ui-react";
 import { Security } from "./Security";
@@ -116,7 +117,7 @@ function App() {
           : problem.message || "操作未完成，请重试",
       );
     }
-    return response.status === 204 ? undefined : response.json();
+    return (response.status === 204 ? undefined : await response.json()) as T;
   }
   async function api<T>(path: string, body?: unknown): Promise<T> {
     const version = proofVersion.current;
