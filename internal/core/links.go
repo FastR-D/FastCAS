@@ -80,7 +80,7 @@ func (s *Store) PrepareLink(ctx context.Context, client, id, nonce, subject stri
 		return nil, ErrForbidden
 	}
 	if state == "prepared" || state == "active" {
-		return s.Link(ctx, client, id)
+		return readLink(ctx, tx, client, id)
 	}
 	if state != "confirmed" || expires.Before(time.Now()) {
 		return nil, ErrExpired
@@ -111,7 +111,7 @@ func (s *Store) ActivateLink(ctx context.Context, client, id string) (*AccountLi
 		return nil, ErrForbidden
 	}
 	if state == "active" {
-		return s.Link(ctx, client, id)
+		return readLink(ctx, tx, client, id)
 	}
 	if state != "prepared" || expires.Before(time.Now()) {
 		return nil, ErrExpired
@@ -130,8 +130,14 @@ func (s *Store) ActivateLink(ctx context.Context, client, id string) (*AccountLi
 	return &link, tx.Commit(ctx)
 }
 func (s *Store) Link(ctx context.Context, client, id string) (*AccountLink, error) {
+	return readLink(ctx, s.DB, client, id)
+}
+
+func readLink(ctx context.Context, db interface {
+	QueryRow(context.Context, string, ...any) pgx.Row
+}, client, id string) (*AccountLink, error) {
 	var link AccountLink
-	err := s.DB.QueryRow(ctx, `SELECT id,client_id,local_ref,subject,state,version,verified_at FROM account_links WHERE id=$1 AND client_id=$2`, id, client).Scan(&link.ID, &link.ClientID, &link.LocalRef, &link.Subject, &link.State, &link.Version, &link.VerifiedAt)
+	err := db.QueryRow(ctx, `SELECT id,client_id,local_ref,subject,state,version,verified_at FROM account_links WHERE id=$1 AND client_id=$2`, id, client).Scan(&link.ID, &link.ClientID, &link.LocalRef, &link.Subject, &link.State, &link.Version, &link.VerifiedAt)
 	return &link, classify(err)
 }
 func (s *Store) ResolveLink(ctx context.Context, client, subject string) (*AccountLink, error) {
@@ -148,6 +154,12 @@ func (s *Store) RevokeLink(ctx context.Context, client, id string, expected int6
 		return nil, err
 	}
 	defer tx.Rollback(ctx)
+	// Prepare and activate lock the intent before the relationship. Revocation
+	// must use the same order to avoid a cycle between the two rows.
+	var intentID string
+	if err = tx.QueryRow(ctx, `SELECT id FROM link_intents WHERE id=$1 AND client_id=$2 FOR UPDATE`, id, client).Scan(&intentID); err != nil {
+		return nil, ErrForbidden
+	}
 	var link AccountLink
 	err = tx.QueryRow(ctx, `SELECT id,client_id,local_ref,subject,state,version,verified_at FROM account_links WHERE id=$1 AND client_id=$2 FOR UPDATE`, id, client).Scan(&link.ID, &link.ClientID, &link.LocalRef, &link.Subject, &link.State, &link.Version, &link.VerifiedAt)
 	if err != nil {
