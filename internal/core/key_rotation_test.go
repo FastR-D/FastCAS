@@ -5,6 +5,7 @@ import (
 	jose "github.com/go-jose/go-jose/v4"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 )
@@ -79,11 +80,13 @@ func TestOfflineSigningRotation(t *testing.T) {
 	if len(keys) != 1 || emergency.Encryption != first.Encryption {
 		t.Fatal("emergency retained key or changed encryption")
 	}
-	if err = os.Chmod(filepath.Join(dir, "keyring.json"), 0644); err != nil {
-		t.Fatal(err)
-	}
-	if _, err = LoadKeys(dir); err == nil {
-		t.Fatal("readable manifest accepted")
+	if runtime.GOOS != "windows" {
+		if err = os.Chmod(filepath.Join(dir, "keyring.json"), 0644); err != nil {
+			t.Fatal(err)
+		}
+		if _, err = LoadKeys(dir); err == nil {
+			t.Fatal("readable manifest accepted")
+		}
 	}
 }
 func TestRotationRefusesConcurrentWriterAndCorruptManifest(t *testing.T) {

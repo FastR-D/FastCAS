@@ -65,6 +65,9 @@ func InitializeKeys(dir string) error {
 		if err = errors.Join(writeErr, syncErr, closeErr); err != nil {
 			return err
 		}
+		if err = protectPrivateFile(filepath.Join(dir, name)); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -81,8 +84,8 @@ func LoadKeys(dir string) (*KeyRing, error) {
 		if err != nil {
 			return nil, err
 		}
-		if info.Mode().Perm()&0077 != 0 {
-			return nil, errors.New("key files must not be readable by group or others")
+		if err = verifyPrivateFile(filepath.Join(dir, name), info); err != nil {
+			return nil, err
 		}
 	}
 	data, err := os.ReadFile(filepath.Join(dir, signingFile))

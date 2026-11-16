@@ -84,6 +84,9 @@ func RotateKeys(dir string, retain time.Duration, emergency bool) error {
 	if err = f.Close(); err != nil {
 		return err
 	}
+	if err = protectPrivateFile(f.Name()); err != nil {
+		return err
+	}
 	if err = os.Rename(f.Name(), filepath.Join(dir, "keyring.json")); err != nil {
 		return err
 	}
@@ -92,7 +95,7 @@ func RotateKeys(dir string, retain time.Duration, emergency bool) error {
 		return err
 	}
 	defer d.Close()
-	if err = d.Sync(); err != nil {
+	if err = syncKeyDirectory(d); err != nil {
 		return err
 	}
 	// Once the manifest is durable, the legacy private key must not remain in
@@ -100,5 +103,5 @@ func RotateKeys(dir string, retain time.Duration, emergency bool) error {
 	if err = os.Remove(filepath.Join(dir, "signing.pem")); err != nil && !os.IsNotExist(err) {
 		return err
 	}
-	return d.Sync()
+	return syncKeyDirectory(d)
 }
