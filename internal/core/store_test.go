@@ -36,11 +36,14 @@ func fixture(t *testing.T) (*core.Store, *core.Identity, *core.BrowserSession) {
 	}
 	return s, u, session
 }
-func authorize(t *testing.T, s *core.Store, session *core.BrowserSession, nonce string) *core.Authorization {
+func authorize(t *testing.T, s *core.Store, session *core.BrowserSession, nonce string, scopes ...string) *core.Authorization {
 	t.Helper()
 	ctx := context.Background()
 	challenge := sha256.Sum256([]byte(core.RandomToken()))
-	request, err := s.CreateAuthRequest(ctx, &oidc.AuthRequest{ClientID: "write", RedirectURI: "http://127.0.0.1:3003/callback", ResponseType: oidc.ResponseTypeCode, Scopes: []string{"openid", "offline_access"}, State: core.RandomToken(), Nonce: nonce, CodeChallenge: base64.RawURLEncoding.EncodeToString(challenge[:]), CodeChallengeMethod: oidc.CodeChallengeMethodS256}, "")
+	if len(scopes) == 0 {
+		scopes = []string{"openid", "offline_access"}
+	}
+	request, err := s.CreateAuthRequest(ctx, &oidc.AuthRequest{ClientID: "write", RedirectURI: "http://127.0.0.1:3003/callback", ResponseType: oidc.ResponseTypeCode, Scopes: scopes, State: core.RandomToken(), Nonce: nonce, CodeChallenge: base64.RawURLEncoding.EncodeToString(challenge[:]), CodeChallengeMethod: oidc.CodeChallengeMethodS256}, "")
 	if err != nil {
 		t.Fatal(err)
 	}
