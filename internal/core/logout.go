@@ -53,19 +53,7 @@ func (s *Store) LogoutAll(ctx context.Context, subject string) error {
 	if _, err = tx.Exec(ctx, `UPDATE identities SET authentication_version=authentication_version+1 WHERE id=$1`, subject); err != nil {
 		return err
 	}
-	if _, err = tx.Exec(ctx, `DELETE FROM github_flows WHERE subject=$1`, subject); err != nil {
-		return err
-	}
-	if _, err = tx.Exec(ctx, `UPDATE browser_sessions SET revoked_at=COALESCE(revoked_at,now()) WHERE identity_id=$1`, subject); err != nil {
-		return err
-	}
-	if _, err = tx.Exec(ctx, `UPDATE token_families SET revoked_at=COALESCE(revoked_at,now()) WHERE subject=$1`, subject); err != nil {
-		return err
-	}
-	if _, err = tx.Exec(ctx, `UPDATE access_tokens SET revoked_at=COALESCE(revoked_at,now()) WHERE subject=$1`, subject); err != nil {
-		return err
-	}
-	if err = queueLogout(ctx, tx, subject, ""); err != nil {
+	if err = revokeIdentityAccess(ctx, tx, subject); err != nil {
 		return err
 	}
 	if err = audit(ctx, tx, subject, "session.logout_all", subject); err != nil {
