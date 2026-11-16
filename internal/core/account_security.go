@@ -330,25 +330,7 @@ func (s *Store) RedeemMFAReset(ctx context.Context, raw, password, peer string) 
 	if _, err = tx.Exec(ctx, `DELETE FROM recovery_codes WHERE identity_id=$1`, id); err != nil {
 		return err
 	}
-	if _, err = tx.Exec(ctx, `DELETE FROM github_flows WHERE subject=$1`, id); err != nil {
-		return err
-	}
-	if _, err = tx.Exec(ctx, `UPDATE browser_sessions SET revoked_at=COALESCE(revoked_at,now()) WHERE identity_id=$1`, id); err != nil {
-		return err
-	}
-	if _, err = tx.Exec(ctx, `UPDATE token_families SET revoked_at=COALESCE(revoked_at,now()) WHERE subject=$1`, id); err != nil {
-		return err
-	}
-	if _, err = tx.Exec(ctx, `UPDATE access_tokens SET revoked_at=COALESCE(revoked_at,now()) WHERE subject=$1`, id); err != nil {
-		return err
-	}
-	if _, err = tx.Exec(ctx, `UPDATE auth_requests SET consumed_at=COALESCE(consumed_at,now()) WHERE payload->>'Subject'=$1 AND consumed_at IS NULL`, id); err != nil {
-		return err
-	}
-	if _, err = tx.Exec(ctx, `UPDATE device_authorizations SET status='denied' WHERE subject=$1 AND status='approved'`, id); err != nil {
-		return err
-	}
-	if err = queueLogout(ctx, tx, id, ""); err != nil {
+	if err = revokeIdentityAccess(ctx, tx, id); err != nil {
 		return err
 	}
 	if err = audit(ctx, tx, id, "mfa.reset", id); err != nil {
@@ -413,25 +395,7 @@ func (s *Store) ChangePassword(ctx context.Context, subject, sessionID, current,
 	if _, err = tx.Exec(ctx, `UPDATE identities SET password_hash=$2 WHERE id=$1`, subject, encoded); err != nil {
 		return err
 	}
-	if _, err = tx.Exec(ctx, `DELETE FROM github_flows WHERE subject=$1`, subject); err != nil {
-		return err
-	}
-	if _, err = tx.Exec(ctx, `UPDATE browser_sessions SET revoked_at=COALESCE(revoked_at,now()) WHERE identity_id=$1`, subject); err != nil {
-		return err
-	}
-	if _, err = tx.Exec(ctx, `UPDATE token_families SET revoked_at=COALESCE(revoked_at,now()) WHERE subject=$1`, subject); err != nil {
-		return err
-	}
-	if _, err = tx.Exec(ctx, `UPDATE access_tokens SET revoked_at=COALESCE(revoked_at,now()) WHERE subject=$1`, subject); err != nil {
-		return err
-	}
-	if _, err = tx.Exec(ctx, `UPDATE auth_requests SET consumed_at=COALESCE(consumed_at,now()) WHERE payload->>'Subject'=$1 AND consumed_at IS NULL`, subject); err != nil {
-		return err
-	}
-	if _, err = tx.Exec(ctx, `UPDATE device_authorizations SET status='denied' WHERE subject=$1 AND status='approved'`, subject); err != nil {
-		return err
-	}
-	if err = queueLogout(ctx, tx, subject, ""); err != nil {
+	if err = revokeIdentityAccess(ctx, tx, subject); err != nil {
 		return err
 	}
 	if err = audit(ctx, tx, subject, "password.change", subject); err != nil {
@@ -469,25 +433,7 @@ func (s *Store) RedeemCredential(ctx context.Context, kind, raw, name, password 
 	} else {
 		err = tx.QueryRow(ctx, `UPDATE identities SET password_hash=$2 WHERE email=$1 AND status='active' RETURNING id`, email, encoded).Scan(&id)
 		if err == nil {
-			_, err = tx.Exec(ctx, `DELETE FROM github_flows WHERE subject=$1`, id)
-		}
-		if err == nil {
-			_, err = tx.Exec(ctx, `UPDATE browser_sessions SET revoked_at=COALESCE(revoked_at,now()) WHERE identity_id=$1`, id)
-		}
-		if err == nil {
-			_, err = tx.Exec(ctx, `UPDATE token_families SET revoked_at=COALESCE(revoked_at,now()) WHERE subject=$1`, id)
-		}
-		if err == nil {
-			_, err = tx.Exec(ctx, `UPDATE access_tokens SET revoked_at=COALESCE(revoked_at,now()) WHERE subject=$1`, id)
-		}
-		if err == nil {
-			_, err = tx.Exec(ctx, `UPDATE auth_requests SET consumed_at=COALESCE(consumed_at,now()) WHERE payload->>'Subject'=$1 AND consumed_at IS NULL`, id)
-		}
-		if err == nil {
-			_, err = tx.Exec(ctx, `UPDATE device_authorizations SET status='denied' WHERE subject=$1 AND status='approved'`, id)
-		}
-		if err == nil {
-			err = queueLogout(ctx, tx, id, "")
+			err = revokeIdentityAccess(ctx, tx, id)
 		}
 	}
 	if err != nil {
@@ -545,19 +491,7 @@ func (s *Store) SetIdentityStatus(ctx context.Context, actor, id, status string)
 		return err
 	}
 	if status == "disabled" {
-		if _, err = tx.Exec(ctx, `DELETE FROM github_flows WHERE subject=$1`, id); err != nil {
-			return err
-		}
-		if _, err = tx.Exec(ctx, `UPDATE browser_sessions SET revoked_at=COALESCE(revoked_at,now()) WHERE identity_id=$1`, id); err != nil {
-			return err
-		}
-		if _, err = tx.Exec(ctx, `UPDATE token_families SET revoked_at=COALESCE(revoked_at,now()) WHERE subject=$1`, id); err != nil {
-			return err
-		}
-		if _, err = tx.Exec(ctx, `UPDATE access_tokens SET revoked_at=COALESCE(revoked_at,now()) WHERE subject=$1`, id); err != nil {
-			return err
-		}
-		if err = queueLogout(ctx, tx, id, ""); err != nil {
+		if err = revokeIdentityAccess(ctx, tx, id); err != nil {
 			return err
 		}
 	}
