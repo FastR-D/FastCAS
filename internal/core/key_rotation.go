@@ -73,6 +73,10 @@ func RotateKeys(dir string, retain time.Duration, emergency bool) error {
 		return err
 	}
 	defer os.Remove(f.Name())
+	if err = protectPrivateFile(f.Name()); err != nil {
+		f.Close()
+		return err
+	}
 	if _, err = f.Write(data); err != nil {
 		f.Close()
 		return err
@@ -84,10 +88,7 @@ func RotateKeys(dir string, retain time.Duration, emergency bool) error {
 	if err = f.Close(); err != nil {
 		return err
 	}
-	if err = protectPrivateFile(f.Name()); err != nil {
-		return err
-	}
-	if err = os.Rename(f.Name(), filepath.Join(dir, "keyring.json")); err != nil {
+	if err = replaceKeyManifest(f.Name(), filepath.Join(dir, "keyring.json")); err != nil {
 		return err
 	}
 	d, err := os.Open(dir)

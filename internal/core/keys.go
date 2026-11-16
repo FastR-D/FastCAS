@@ -45,6 +45,9 @@ func InitializeKeys(dir string) error {
 	if err := os.Mkdir(dir, 0700); err != nil {
 		return err
 	}
+	if err := protectPrivateDirectory(dir); err != nil {
+		return err
+	}
 	private, err := rsa.GenerateKey(rand.Reader, 3072)
 	if err != nil {
 		return err
