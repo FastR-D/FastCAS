@@ -79,7 +79,7 @@ func TestOfflineSigningRotation(t *testing.T) {
 	if len(keys) != 1 || emergency.Encryption != first.Encryption {
 		t.Fatal("emergency retained key or changed encryption")
 	}
-	if err = os.Chmod(filepath.Join(dir, "keyring.json"), 0644); err != nil {
+	if err = makeKeyPublic(filepath.Join(dir, "keyring.json")); err != nil {
 		t.Fatal(err)
 	}
 	if _, err = LoadKeys(dir); err == nil {

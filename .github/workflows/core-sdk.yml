@@ -5,6 +5,16 @@ on:
   pull_request:
 
 jobs:
+  windows-keys:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: 1.26.8
+          cache: true
+      - name: Verify native key permissions and offline rotation
+        run: go test ./internal/core -run 'TestOfflineSigningRotation|TestRotationRefusesConcurrentWriterAndCorruptManifest' -count=1 -v
   core-sdk:
     runs-on: ubuntu-latest
     services:
