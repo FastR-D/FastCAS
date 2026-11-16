@@ -104,6 +104,19 @@ func (s *Store) validateTokenSubject(ctx context.Context, t *Token) error {
 	return nil
 }
 
+func (s *Store) validateRefreshClient(ctx context.Context, t *Token) error {
+	client, err := s.Client(ctx, t.ClientID)
+	if err != nil || !slices.Contains(client.Grants, oidc.GrantTypeRefreshToken) || !slices.Contains(client.Scopes, oidc.ScopeOfflineAccess) {
+		return op.ErrInvalidRefreshToken
+	}
+	for _, scope := range t.Scopes {
+		if !slices.Contains(client.Scopes, scope) {
+			return op.ErrInvalidRefreshToken
+		}
+	}
+	return nil
+}
+
 func insertAccess(ctx context.Context, tx pgx.Tx, t *Token) error {
 	data, err := marshal(t)
 	if err != nil {
@@ -150,6 +163,11 @@ func (s *Store) CreateAccessAndRefreshTokens(ctx context.Context, r op.TokenRequ
 	}
 	if err = s.validateTokenSubject(ctx, t); err != nil {
 		return "", "", time.Time{}, err
+	}
+	if current != "" {
+		if err = s.validateRefreshClient(ctx, t); err != nil {
+			return "", "", time.Time{}, err
+		}
 	}
 	tx, err := s.DB.Begin(ctx)
 	if err != nil {
@@ -226,6 +244,9 @@ func (s *Store) TokenRequestByRefreshToken(ctx context.Context, raw string) (op.
 		return nil, err
 	}
 	if err = s.validateTokenSubject(ctx, &t); err != nil {
+		return nil, err
+	}
+	if err = s.validateRefreshClient(ctx, &t); err != nil {
 		return nil, err
 	}
 	return &t, nil
