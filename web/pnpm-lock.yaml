@@ -9,14 +9,14 @@ importers:
   .:
     dependencies:
       '@fastrd/ui-foundation':
-        specifier: 0.3.0
-        version: 0.3.0
+        specifier: 0.4.0
+        version: 0.4.0
       '@fastrd/ui-react':
-        specifier: 0.3.0
-        version: 0.3.0(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+        specifier: 0.4.0
+        version: 0.4.0(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       lucide-react:
-        specifier: 1.72.0
-        version: 1.72.0(@types/react@19.3.0)(react@19.3.1)
+        specifier: 1.75.0
+        version: 1.75.0(@types/react@19.3.0)(react@19.3.1)
       qrcode.react:
         specifier: 4.2.0
         version: 4.2.0(react@19.3.1)
@@ -34,8 +34,8 @@ importers:
         specifier: 19.3.0
         version: 19.3.0(@types/react@19.3.0)
       playwright-core:
-        specifier: 1.65.0
-        version: 1.65.0
+        specifier: 1.65.1
+        version: 1.65.1
       typescript:
         specifier: 7.0.2
         version: 7.0.2
@@ -54,16 +54,16 @@ packages:
   '@emnapi/wasi-threads@2.2.0':
     resolution: {integrity: sha512-JP7OYH38Q7+pyTAe14raZHLQIK7BDKbdwji+Xi3pcd/6QkJYQH3SX4wu6EplGrGJWRepoNzedfm0G3B9Z4e9Rw==}
 
-  '@fastrd/ui-foundation@0.3.0':
-    resolution: {integrity: sha512-GRyPlXiVpZlCYsAbQykUScxWDjn846U5lsa2GymwICJbH0fuqc9Xwn8pSdOWmzpPOC1sdT6WVKoMgAhtUw438w==}
+  '@fastrd/ui-foundation@0.4.0':
+    resolution: {integrity: sha512-2Tp6/KQ13VfUfh89p4e/5jCycNtvB79H7mVaD1M72rcwYnFkqKqmiVLFoh6G4+mNrmkEGDMpvA5paaXyTwlO3Q==}
     peerDependencies:
       unocss: ^66.12.0
     peerDependenciesMeta:
       unocss:
         optional: true
 
-  '@fastrd/ui-react@0.3.0':
-    resolution: {integrity: sha512-wb2ylB+1R38DwKKo6GmKz7z/7UmOtma9egJGtMtNypX0YUVB8wmHcCUgKZQLf1CLygtGqW7DNpIMU+6YVKeJ6Q==}
+  '@fastrd/ui-react@0.4.0':
+    resolution: {integrity: sha512-06xNkJVRqDCcHVdliV0nUmMOsdJeBD4DBgYCxEgdEQZtOsg0zyyxac/v4pjkE0lb9TgtQc5pA31ES0+ZwGiMvQ==}
     peerDependencies:
       react: ^18.3.0 || ^19.0.0
       react-dom: ^18.3.0 || ^19.0.0
@@ -408,8 +408,8 @@ packages:
     resolution: {integrity: sha512-WkUDrojuJs0xkgGf2udWxa3yGBRxPtxUkB79i6aCZLRgc7PM8fZe9TosfPDcvEpQZbuFASnHYmRLBLUbmLOIIA==}
     engines: {node: '>= 12.0.0'}
 
-  lucide-react@1.72.0:
-    resolution: {integrity: sha512-fbF5i1GU8GODETa3Q7rXqrJrcx3iPYrQtxthom103zGx+Z0BGwKYAW9s+9435ohYJ7hQm0av0PoZcqI1CRwNrg==}
+  lucide-react@1.75.0:
+    resolution: {integrity: sha512-piesXAZIXru9d5lHBoM6cPHOBs5+QkMx+3EXwG3xWJ7qdViuz92JtYN0u9jMB6jt+2WbQrwhvJGdMwGnL3EOfA==}
     peerDependencies:
       '@types/react': '*'
       react: ^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0
@@ -429,8 +429,8 @@ packages:
     resolution: {integrity: sha512-qcJu88Q2IWqJsDD529JKMdwGm/dvInW4HvQnRwiH9JtihJvzGOscDtHE3x1pBKeUOTysQ8kVmLnJ2kJu7yhcGA==}
     engines: {node: '>=12'}
 
-  playwright-core@1.65.0:
-    resolution: {integrity: sha512-vNSKgH6YqtN7cdT/L334zo0a+YwkrpicyrHJlWWPIm/Q+Nn2SWInil01oT0mbu96U4GgoRtCYQD9CzJQgju+lA==}
+  playwright-core@1.65.1:
+    resolution: {integrity: sha512-hqPpz7blSMPxWVdoeE1yiBSzXsKiVOd2k+kjCvmUywD2GPO2Dd9HfcWnq9NN0GHbNZDFgZ9JfBFr+X5/BLo0qw==}
     engines: {node: '>=20'}
     hasBin: true
 
@@ -537,11 +537,11 @@ snapshots:
       tslib: 2.9.1
     optional: true
 
-  '@fastrd/ui-foundation@0.3.0': {}
+  '@fastrd/ui-foundation@0.4.0': {}
 
-  '@fastrd/ui-react@0.3.0(react-dom@19.3.1(react@19.3.1))(react@19.3.1)':
+  '@fastrd/ui-react@0.4.0(react-dom@19.3.1(react@19.3.1))(react@19.3.1)':
     dependencies:
-      '@fastrd/ui-foundation': 0.3.0
+      '@fastrd/ui-foundation': 0.4.0
       react: 19.3.1
       react-dom: 19.3.1(react@19.3.1)
     transitivePeerDependencies:
@@ -743,7 +743,7 @@ snapshots:
       lightningcss-win32-arm64-msvc: 1.33.0
       lightningcss-win32-x64-msvc: 1.33.0
 
-  lucide-react@1.72.0(@types/react@19.3.0)(react@19.3.1):
+  lucide-react@1.75.0(@types/react@19.3.0)(react@19.3.1):
     dependencies:
       react: 19.3.1
     optionalDependencies:
@@ -755,7 +755,7 @@ snapshots:
 
   picomatch@4.0.7: {}
 
-  playwright-core@1.65.0: {}
+  playwright-core@1.65.1: {}
 
   postcss@8.5.32:
     dependencies:
