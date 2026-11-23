@@ -3,12 +3,14 @@ package core
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/jackc/pgx/v5"
 )
 
 var ErrGitHubNotLinked = errors.New("GitHub account is not linked")
+var ErrGitHubEmailConflict = fmt.Errorf("GitHub registration email already in use: %w", ErrConflict)
 
 type GitHubFlow struct {
 	Purpose, Verifier, SessionID, Subject, AuthRequestID, DeviceCode string
@@ -117,9 +119,12 @@ func (s *Store) RegisterGitHub(ctx context.Context, githubID int64, login, email
 		role = "admin"
 	}
 	u := &Identity{ID: RandomToken(), Email: email, Name: name, Role: role, Status: "active", EmailVerified: true}
-	_, err = tx.Exec(ctx, `INSERT INTO identities(id,email,name,password_hash,email_verified,role) VALUES($1,$2,$3,'',true,$4)`, u.ID, u.Email, u.Name, u.Role)
+	result, err := tx.Exec(ctx, `INSERT INTO identities(id,email,name,password_hash,email_verified,role) VALUES($1,$2,$3,'',true,$4) ON CONFLICT (email) DO NOTHING`, u.ID, u.Email, u.Name, u.Role)
 	if err != nil {
 		return nil, classify(err)
+	}
+	if result.RowsAffected() == 0 {
+		return nil, ErrGitHubEmailConflict
 	}
 	_, err = tx.Exec(ctx, `INSERT INTO github_accounts(github_id,identity_id,login) VALUES($1,$2,$3)`, githubID, u.ID, login)
 	if err != nil {

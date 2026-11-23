@@ -274,15 +274,44 @@ func TestGitHubRegistrationPolicy(t *testing.T) {
 		}
 		g.assertNoAccount()
 	})
-	t.Run("email collision cannot merge", func(t *testing.T) {
+	t.Run("email collision prompts login and binding", func(t *testing.T) {
 		g := newGitHubTest(t, "FastR-D")
-		if _, err := g.server.Store.CreateIdentity(context.Background(), g.email, "Existing", "existing-password-123", "member"); err != nil {
+		g.server.ConsoleEnabled = true
+		ctx := context.Background()
+		const password = "existing-password-123"
+		user, err := g.server.Store.CreateIdentity(ctx, g.email, "Existing", password, "member")
+		if err != nil {
 			t.Fatal(err)
 		}
-		if w := g.request("GET", g.start("register", ""), nil); w.Code != 409 {
-			t.Fatal("email collision accepted")
+		w := g.request("GET", g.start("register", ""), nil)
+		body := w.Body.String()
+		const loginURL = "/login"
+		if w.Code != http.StatusConflict || !strings.Contains(body, "<h1>合并账号</h1>") ||
+			!strings.Contains(body, "绑定 GitHub") || !strings.Contains(body, `href="`+loginURL+`">登录已有账号`) {
+			t.Fatalf("missing merge prompt: %d %s", w.Code, body)
 		}
 		g.assertNoAccount()
+		page := g.request("GET", loginURL, nil)
+		if page.Code != http.StatusOK {
+			t.Fatalf("merge login page: %d %s", page.Code, page.Body.String())
+		}
+		w = g.request("POST", "/login", url.Values{
+			"csrf":     {g.cookies["fastcas_form"].Value},
+			"action":   {"login"},
+			"email":    {g.email},
+			"password": {password},
+		})
+		if w.Code != http.StatusSeeOther || w.Header().Get("Location") != "/console/" {
+			t.Fatalf("merge login did not open account console: %d %s", w.Code, w.Header().Get("Location"))
+		}
+		w = g.request("GET", g.bindStart(), nil)
+		if w.Code != http.StatusSeeOther {
+			t.Fatalf("explicit GitHub binding: %d %s", w.Code, w.Body.String())
+		}
+		bound, err := g.server.Store.GitHubIdentity(ctx, g.profileID)
+		if err != nil || bound.ID != user.ID {
+			t.Fatalf("GitHub did not bind to the existing account: %v", err)
+		}
 	})
 }
 func TestGitHubStateAndCSRF(t *testing.T) {

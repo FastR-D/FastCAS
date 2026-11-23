@@ -172,13 +172,25 @@ func (g *gitHubProvider) request(ctx context.Context, method, path, token string
 	return json.NewDecoder(io.LimitReader(resp.Body, 1<<20)).Decode(out)
 }
 
-var githubResultTemplate = authTemplate("github-result", `<!doctype html><html lang="zh-CN" data-fastui-theme="dark"><head>{{template "auth-head" .}}</head><body><main>{{template "auth-toolbar" .}}<h1>{{.Title}}</h1><p role="alert">{{.Message}}</p><a href="/login">返回登录</a></main></body></html>`)
+var githubResultTemplate = authTemplate("github-result", `<!doctype html><html lang="zh-CN" data-fastui-theme="dark"><head>{{template "auth-head" .}}</head><body><main>{{template "auth-toolbar" .}}<h1>{{.Title}}</h1><p role="alert">{{.Message}}</p>{{if .Merge}}<a class="fastui-button fastui-button--primary" href="/login">登录已有账号</a>{{else}}<a href="/login">返回登录</a>{{end}}</main></body></html>`)
 
 func (s *Server) githubError(w http.ResponseWriter, status int, message string) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(status)
 	_ = githubResultTemplate.Execute(w, map[string]any{"Title": "GitHub 认证未完成", "Assets": s.authAssets, "Message": message})
 }
+
+func (s *Server) githubMergePrompt(w http.ResponseWriter) {
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.WriteHeader(http.StatusConflict)
+	_ = githubResultTemplate.Execute(w, map[string]any{
+		"Title":   "合并账号",
+		"Assets":  s.authAssets,
+		"Message": "GitHub 的主邮箱已用于一个 FastCAS 账号。请使用原登录方式登录已有账号，然后在安全设置中选择「绑定 GitHub」，即可使用 GitHub 登录同一个账号。",
+		"Merge":   true,
+	})
+}
+
 func (s *Server) githubCallback(w http.ResponseWriter, r *http.Request) {
 	if !s.githubAvailable(w) {
 		return
@@ -278,8 +290,10 @@ func (s *Server) githubCallback(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case errors.Is(err, core.ErrGitHubNotLinked):
 			s.githubError(w, 403, "该 GitHub 尚未绑定 FastCAS。已有账号请先用原方式登录并绑定；新用户请选择 GitHub 注册。")
+		case errors.Is(err, core.ErrGitHubEmailConflict):
+			s.githubMergePrompt(w)
 		case errors.Is(err, core.ErrConflict):
-			s.githubError(w, 409, "邮箱或 GitHub 已被账号使用。请先登录已有 FastCAS 账号，再从安全中心绑定 GitHub。")
+			s.githubError(w, 409, "GitHub 注册发生冲突，请返回登录页后重试。")
 		case errors.Is(err, core.ErrUnauthorized):
 			s.githubError(w, 403, "该 FastCAS 账号不可用，请联系管理员。")
 		default:
