@@ -27,6 +27,7 @@ import {
 } from "@fastrd/ui-react";
 import { useEffect, useState } from "react";
 type API = <T>(path: string, body?: unknown) => Promise<T>;
+type CredentialKind = "invite" | "claim" | "recovery" | "mfa_reset";
 type ServiceAccount = {
   client: Application;
   active: boolean;
@@ -48,10 +49,11 @@ export function Admin({
     [services, setServices] = useState<ServiceAccount[]>([]);
   const [applicationCursor, setApplicationCursor] = useState(""),
     [serviceCursor, setServiceCursor] = useState("");
-  const [kind, setKind] = useState<"invite" | "recovery" | "mfa_reset">(
+  const [kind, setKind] = useState<CredentialKind>(
       "invite",
     ),
     [email, setEmail] = useState(""),
+    [targetEmail, setTargetEmail] = useState(""),
     [issued, setIssued] = useState("");
   const [editing, setEditing] = useState<ApplicationEdit | null>(null),
     [feedback, setFeedback] = useState("");
@@ -112,7 +114,7 @@ export function Admin({
             void run(async () => {
               const result = await api<{ token: string }>(
                 "/admin/credentials",
-                { kind, email },
+                kind === "claim" ? { kind, email, target_email: targetEmail } : { kind, email },
               );
               setIssued(result.token);
             });
@@ -123,17 +125,30 @@ export function Admin({
             <Select
               value={kind}
               onChange={(e) => {
-                setKind(e.target.value as "invite" | "recovery" | "mfa_reset");
+                setKind(e.target.value as CredentialKind);
                 setIssued("");
               }}
             >
               <option value="invite">邀请注册</option>
+              <option value="claim">绑定已有 FastResearch 账号</option>
               <option value="recovery">密码恢复</option>
               <option value="mfa_reset">双重验证重置</option>
             </Select>
           </label>
+          {kind === "claim" && (
+            <label>
+              待认领账号的占位邮箱
+              <TextField
+                type="email"
+                required
+                value={targetEmail}
+                onChange={(e) => setTargetEmail(e.target.value)}
+              />
+              <small>在用户管理中查找标为待认领的账户。</small>
+            </label>
+          )}
           <label>
-            目标邮箱
+            {kind === "claim" ? "认领后的登录邮箱" : "目标邮箱"}
             <TextField
               type="email"
               required
@@ -148,7 +163,9 @@ export function Admin({
         </form>
         {issued && (
           <div>
-            <p>请现在复制并私下交付，关闭后不再显示。</p>
+            <p>{kind === "claim"
+              ? "请私下交付此邀请码及登录邮箱。用户需输入原 FastResearch 账户姓名，邀请码一小时内有效。"
+              : "请现在复制并私下交付，关闭后不再显示。"}</p>
             <TextArea
               className="secret-value"
               aria-label="一次性凭证"

@@ -15,6 +15,7 @@ import (
 
 func (s *Server) accountRoutes(r chi.Router) {
 	r.Post("/api/v1/register", s.redeemInvite)
+	r.Post("/api/v1/claim", s.redeemClaim)
 	r.Post("/api/v1/recover", s.redeemRecovery)
 	r.Post("/api/v1/recover-mfa", s.redeemMFAReset)
 	r.Post("/api/v1/me/mfa/enroll", s.enrollMFA)
@@ -247,6 +248,7 @@ func (s *Server) changePassword(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(204)
 }
 func (s *Server) redeemInvite(w http.ResponseWriter, r *http.Request)   { s.redeem(w, r, "invite") }
+func (s *Server) redeemClaim(w http.ResponseWriter, r *http.Request)    { s.redeem(w, r, "claim") }
 func (s *Server) redeemRecovery(w http.ResponseWriter, r *http.Request) { s.redeem(w, r, "recovery") }
 func (s *Server) redeemMFAReset(w http.ResponseWriter, r *http.Request) {
 	if !s.originOK(r) {
@@ -301,7 +303,16 @@ func (s *Server) redeem(w http.ResponseWriter, r *http.Request, kind string) {
 		failure(w, core.ErrForbidden)
 		return
 	}
-	user, err := s.Store.RedeemCredential(r.Context(), kind, input.Token, input.Name, input.Password)
+	var user *core.Identity
+	if kind == "claim" {
+		user, err = s.Store.RedeemClaim(r.Context(), strings.TrimSpace(input.Token), input.Name, input.Password)
+		if errors.Is(err, core.ErrConflict) {
+			problem(w, 409, "claim_email_unavailable", "登录邮箱已被占用，请联系管理员重新签发邀请码")
+			return
+		}
+	} else {
+		user, err = s.Store.RedeemCredential(r.Context(), kind, input.Token, input.Name, input.Password)
+	}
 	if err != nil {
 		failure(w, err)
 		return
@@ -425,7 +436,9 @@ func (s *Server) identities(w http.ResponseWriter, r *http.Request) {
 	if _, ok := s.authenticated(w, r, true); !ok {
 		return
 	}
-	rows, err := s.Store.DB.Query(r.Context(), `SELECT id,email,name,role,status,email_verified,created_at,mfa_secret IS NOT NULL FROM identities WHERE id>$1 AND deleted_at IS NULL ORDER BY id LIMIT 100`, r.URL.Query().Get("after"))
+	rows, err := s.Store.DB.Query(r.Context(), `SELECT id,email,name,role,status,email_verified,created_at,mfa_secret IS NOT NULL,
+	 EXISTS(SELECT 1 FROM fastresearch_imports WHERE identity_id=identities.id AND claimed_at IS NULL)
+	 FROM identities WHERE id>$1 AND deleted_at IS NULL ORDER BY id LIMIT 100`, r.URL.Query().Get("after"))
 	if err != nil {
 		failure(w, err)
 		return
@@ -434,7 +447,7 @@ func (s *Server) identities(w http.ResponseWriter, r *http.Request) {
 	list := []core.ManagedIdentity{}
 	for rows.Next() {
 		var i core.ManagedIdentity
-		if err = rows.Scan(&i.ID, &i.Email, &i.Name, &i.Role, &i.Status, &i.EmailVerified, &i.CreatedAt, &i.MFAEnabled); err != nil {
+		if err = rows.Scan(&i.ID, &i.Email, &i.Name, &i.Role, &i.Status, &i.EmailVerified, &i.CreatedAt, &i.MFAEnabled, &i.ClaimPending); err != nil {
 			failure(w, err)
 			return
 		}
@@ -518,14 +531,29 @@ func (s *Server) issueCredential(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var input struct {
-		Kind  string `json:"kind"`
-		Email string `json:"email"`
+		Kind        string `json:"kind"`
+		Email       string `json:"email"`
+		TargetEmail string `json:"target_email"`
 	}
 	if decode(r, &input) != nil {
 		failure(w, core.ErrForbidden)
 		return
 	}
-	raw, err := s.Store.IssueCredential(r.Context(), session.IdentityID, input.Kind, input.Email)
+	var raw string
+	var err error
+	if input.Kind == "claim" {
+		raw, err = s.Store.IssueClaim(r.Context(), session.IdentityID, input.TargetEmail, input.Email)
+		if errors.Is(err, core.ErrForbidden) {
+			problem(w, 403, "claim_target_unavailable", "请填写可认领的 FastResearch 账户和有效的登录邮箱")
+			return
+		}
+		if errors.Is(err, core.ErrConflict) {
+			problem(w, 409, "claim_email_unavailable", "登录邮箱已被占用")
+			return
+		}
+	} else {
+		raw, err = s.Store.IssueCredential(r.Context(), session.IdentityID, input.Kind, input.Email)
+	}
 	if err != nil {
 		failure(w, err)
 		return

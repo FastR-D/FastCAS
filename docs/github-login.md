@@ -17,6 +17,7 @@ https://cas.fastrd.io/auth/github/callback
 | `FASTCAS_GITHUB_CLIENT_ID` | OAuth App 的 Client ID |
 | `FASTCAS_GITHUB_CLIENT_SECRET` | OAuth App 的 Client Secret，仅注入服务端 |
 | `FASTCAS_GITHUB_REGISTRATION_ORG` | 新用户注册时必须属于的 GitHub 组织；线上配置为 `FastR-D` |
+| `FASTCAS_GITHUB_TOKEN_ADDRESS` | 可选。为授权码兑换指定已验证的 GitHub IP，HTTPS 主机名与证书仍校验 `github.com`。GitHub REST API 使用正常 DNS。 |
 
 Client ID 和 Secret 都未配置时，GitHub 入口关闭；只配置其中一项会拒绝启动。只有 `FASTCAS_ENV=development` 时组织变量为空才允许任意 GitHub 用户注册；其他环境组织变量为空时自动使用 `FastR-D`。注册限制仅作用于尚未绑定的 GitHub 身份创建新 FastCAS 账号，已有绑定的登录、已有 FastCAS 账号的显式绑定不受此限制。线上（非 development）GitHub 新注册账号默认角色为 `admin`，开发环境默认为 `member`，无需新增角色环境变量。已有账号登录或绑定 GitHub 保留原角色，不自动提权；邀请注册继续使用管理员签发的一次性凭证，默认角色仍为普通成员。
 
@@ -36,6 +37,12 @@ GitHub 官方说明：[OAuth 授权与 PKCE](https://docs.github.com/en/apps/oau
 - 从下游 OIDC 授权或设备授权进入时，GitHub 登录完成后返回原流程；下游应用授权仍需用户确认。
 
 授权状态保存在 PostgreSQL 中，十分钟过期，绑定独立的 HttpOnly 浏览器 Cookie，并通过原子删除防止跨实例重放；绑定发起和 MFA 提交均校验 Origin 与 CSRF。GitHub access token 仅在回调请求中短暂使用，不写入数据库、Cookie、API 响应或审计记录。删除账号会移除 GitHub 绑定；恢复快照隔离命令 `fence-restore` 会清除 GitHub 绑定和未完成流程，需要用户用恢复后的本地认证方式重新绑定。请为仅使用 GitHub 的账号先准备密码或管理员密码恢复流程。
+
+## FastResearch 旧账户
+
+- 管理员在「用户管理」可看到待认领账户及其占位邮箱。在「邀请与恢复」选择「绑定已有 FastResearch 账号」，填写该占位邮箱及持有人的登录邮箱，私下交付一次性邀请码。邀请码一小时有效，重发会使旧码失效。
+- 持有人在登录页选择「注册 → 绑定已有账号」，输入邀请码、原 FastResearch 账户姓名并设置新密码。此后用管理员指定的邮箱登录，FastResearch 继续使用原账户资料。在安全中心可绑定尚未关联的 GitHub 身份。
+- 迁移工具 `scripts/import-fastresearch-accounts.py` 默认只读预览。备份 FastCAS PostgreSQL 和 FastResearch SQLite 后，先应用 FastCAS 数据库迁移，再以 `--apply` 写入。工具按稳定账户 ID 建立关联，支持跨数据库写入中断后重试。
 
 ## 验证
 

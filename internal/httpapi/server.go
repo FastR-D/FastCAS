@@ -224,7 +224,10 @@ func (s *Server) loginPage(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	csrf := core.RandomToken()
+	csrf := cookie(r, "fastcas_form")
+	if len(csrf) != 43 {
+		csrf = core.RandomToken()
+	}
 	s.setCookie(w, "fastcas_form", csrf, 300)
 	data := map[string]any{"Title": "登录", "Assets": s.authAssets, "CSRF": csrf, "RequestID": r.URL.Query().Get("auth_request_id"), "ReturnDevice": safeDeviceCode(r.URL.Query().Get("return_device"))}
 	if s.github != nil {
@@ -235,7 +238,7 @@ func (s *Server) loginPage(w http.ResponseWriter, r *http.Request) {
 	query := r.URL.Query()
 	data["PasswordChanged"] = query.Get("notice") == "password-changed"
 	flow := query.Get("flow")
-	data["Register"] = s.authAssets.Script != "" && (query.Get("tab") == "register" || flow == "invite" || flow == "recovery" || flow == "mfa_reset")
+	data["Register"] = s.authAssets.Script != "" && (query.Get("tab") == "register" || flow == "invite" || flow == "claim" || flow == "recovery" || flow == "mfa_reset")
 	query.Del("flow")
 	query.Del("token")
 	query.Del("tab")

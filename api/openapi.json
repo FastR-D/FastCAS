@@ -677,6 +677,110 @@
         ]
       }
     },
+    "/api/v1/claim": {
+      "post": {
+        "operationId": "redeemClaim",
+        "summary": "Claim an imported FastResearch identity using its invitation and legacy name",
+        "tags": [
+          "Public account"
+        ],
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RedeemedCredential"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid or expired request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden or recent MFA required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Redeem rate limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RedeemClaim"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uri"
+            },
+            "description": "Must exactly match the configured FastCAS issuer."
+          }
+        ]
+      }
+    },
     "/api/v1/recover": {
       "post": {
         "operationId": "redeemRecovery",
@@ -3237,7 +3341,7 @@
     "/api/v1/admin/credentials": {
       "post": {
         "operationId": "issueCredential",
-        "summary": "Issue a one-time invitation, password recovery, or MFA reset credential",
+        "summary": "Issue a one-time registration invite, account claim invite, password recovery, or MFA reset credential",
         "tags": [
           "Administration"
         ],
@@ -5540,6 +5644,28 @@
           "password"
         ]
       },
+      "RedeemClaim": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 12,
+            "maxLength": 256
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "token",
+          "name",
+          "password"
+        ]
+      },
       "RedeemedCredential": {
         "type": "object",
         "properties": {
@@ -5724,12 +5850,18 @@
             "enum": [
               "invite",
               "recovery",
-              "mfa_reset"
+              "mfa_reset",
+              "claim"
             ]
           },
           "email": {
             "type": "string",
             "format": "email"
+          },
+          "target_email": {
+            "type": "string",
+            "format": "email",
+            "description": "The imported account's placeholder email. Required for claim invitations."
           }
         },
         "additionalProperties": false,
@@ -5906,6 +6038,9 @@
           },
           "mfa_enabled": {
             "type": "boolean"
+          },
+          "claim_pending": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false,
@@ -5917,7 +6052,8 @@
           "status",
           "email_verified",
           "created_at",
-          "mfa_enabled"
+          "mfa_enabled",
+          "claim_pending"
         ]
       },
       "UpdateIdentity": {

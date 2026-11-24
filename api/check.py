@@ -50,7 +50,7 @@ for path, methods in document["paths"].items():
             expected = "adminSession"
         elif path.startswith(("/api/v1/link-intents", "/api/v1/account-links")):
             expected = "clientBasic"
-        elif path in ("/api/v1/register", "/api/v1/recover", "/api/v1/recover-mfa"):
+        elif path in ("/api/v1/register", "/api/v1/claim", "/api/v1/recover", "/api/v1/recover-mfa"):
             expected = "public"
         elif path == "/api/v1/device-installations":
             expected = "deviceAccess"

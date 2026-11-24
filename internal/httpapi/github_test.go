@@ -214,6 +214,15 @@ func TestGitHubConfiguration(t *testing.T) {
 	if s.ConfigureGitHub("", "", "") != nil || s.github != nil {
 		t.Fatal("unconfigured provider should stay disabled")
 	}
+	if s.ConfigureGitHubTokenAddress("192.0.2.1") == nil {
+		t.Fatal("route accepted without a configured provider")
+	}
+	if s.ConfigureGitHub("id", "secret", "") != nil ||
+		s.ConfigureGitHubTokenAddress("https://other.example") == nil ||
+		s.ConfigureGitHubTokenAddress("192.0.2.1") != nil ||
+		s.github.client.Transport == nil {
+		t.Fatal("invalid GitHub token route configuration")
+	}
 }
 func TestGitHubRegistrationPolicy(t *testing.T) {
 	for _, tc := range []struct {
@@ -224,7 +233,7 @@ func TestGitHubRegistrationPolicy(t *testing.T) {
 	}{
 		{"active member", "active", 200, true, 303}, {"pending invitation", "pending", 200, true, 403},
 		{"not member", "", 404, true, 403}, {"org approval denied", "", 403, true, 403},
-		{"GitHub outage", "", 503, true, 403}, {"unverified email", "active", 200, false, 403},
+		{"GitHub outage", "", 503, true, 502}, {"unverified email", "active", 200, false, 403},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			g := newGitHubTest(t, "FastR-D")
@@ -327,7 +336,8 @@ func TestGitHubStateAndCSRF(t *testing.T) {
 			callback := g.start("register", "")
 			switch scenario {
 			case "wrong browser":
-				g.cookies["fastcas_github"].Value = "attacker"
+				callbackURL, _ := url.Parse(callback)
+				g.cookies[githubFlowCookie("fastcas_github", callbackURL.Query().Get("state"))].Value = "attacker"
 			case "expired":
 				if _, err := g.server.Store.DB.Exec(context.Background(), `UPDATE github_flows SET expires_at=now()-interval '1 second'`); err != nil {
 					t.Fatal(err)
@@ -345,6 +355,22 @@ func TestGitHubStateAndCSRF(t *testing.T) {
 		})
 	}
 }
+func TestGitHubRegistrationAndLoginInSeparateTabs(t *testing.T) {
+	g := newGitHubTest(t, "FastR-D")
+	register := g.start("register", "")
+	registerChallenge := g.challenge
+	login := g.start("login", "")
+	loginChallenge := g.challenge
+	g.challenge = registerChallenge
+	if w := g.request("GET", register, nil); w.Code != 303 {
+		t.Fatalf("first tab lost its registration: %d %s", w.Code, w.Body.String())
+	}
+	g.challenge = loginChallenge
+	if w := g.request("GET", login, nil); w.Code != 303 {
+		t.Fatalf("second tab lost its login: %d %s", w.Code, w.Body.String())
+	}
+}
+
 func TestGitHubExistingAccountBinding(t *testing.T) {
 	for _, scenario := range []string{"success", "stale start", "stale callback", "different session", "CSRF", "duplicate GitHub", "duplicate identity"} {
 		t.Run(scenario, func(t *testing.T) {

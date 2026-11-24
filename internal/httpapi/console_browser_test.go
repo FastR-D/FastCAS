@@ -47,6 +47,11 @@ func TestConsoleAgainstRealBrowser(t *testing.T) {
 	if _, err = store.CreateIdentity(ctx, "admin@example.test", "Administrator", "administrator long password", "admin"); err != nil {
 		t.Fatal(err)
 	}
+	if _, err = store.DB.Exec(ctx, `
+ INSERT INTO identities(id,email,name,password_hash) VALUES('legacy-research-subject','fr-browser@fastresearch.invalid','Legacy Research Account','');
+ INSERT INTO fastresearch_imports(local_account_id,identity_id,legacy_name) VALUES('legacy-research','legacy-research-subject','Legacy Research Account');`); err != nil {
+		t.Fatal(err)
+	}
 	if err = store.RegisterClient(ctx, core.Client{ID: "browser-contract-receiver", Name: "Receiver", Development: true, Redirects: []string{"http://127.0.0.1/callback"}, Scopes: []string{"openid"}}, "long-enough-test-client-secret-32-characters"); err != nil {
 		t.Fatal(err)
 	}

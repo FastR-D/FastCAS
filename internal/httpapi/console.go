@@ -34,7 +34,7 @@ func Console(api http.Handler, dir string) (http.Handler, error) {
 				}
 			}
 			flow := r.URL.Query().Get("flow")
-			if login || flow == "invite" || flow == "recovery" || flow == "mfa_reset" {
+			if login || flow == "invite" || flow == "claim" || flow == "recovery" || flow == "mfa_reset" {
 				destination := "/login"
 				if r.URL.RawQuery != "" {
 					destination += "?" + r.URL.RawQuery

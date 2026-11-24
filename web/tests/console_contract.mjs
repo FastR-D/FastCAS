@@ -208,11 +208,13 @@ try {
   await page.getByRole("status").getByText("账号已创建").waitFor();
   await page.getByRole("link", { name: "前往登录" }).first().click();
   await page.waitForLoadState("networkidle");
-  assert.equal(
+  assert.ok(
     await page
       .locator("input[name=email]")
-      .evaluate((element) => getComputedStyle(element).borderRadius),
-    "6px",
+      .evaluate((element) => {
+        const style = getComputedStyle(element);
+        return style.borderRadius === style.getPropertyValue("--fastui-radius-control").trim();
+      }),
     "login did not load npm-built FastUI controls",
   );
   await page.getByLabel("界面主题").selectOption("light");
@@ -310,11 +312,13 @@ try {
     { waitUntil: "networkidle" },
   );
   await page.getByRole("heading", { name: "确认设备", exact: true }).waitFor();
-  assert.equal(
+  assert.ok(
     await page
       .getByRole("button", { name: "允许这台设备" })
-      .evaluate((element) => getComputedStyle(element).borderRadius),
-    "6px",
+      .evaluate((element) => {
+        const style = getComputedStyle(element);
+        return style.borderRadius === style.getPropertyValue("--fastui-radius-control").trim();
+      }),
     "device page did not load FastUI controls",
   );
   await screenshot("device-desktop-light");
@@ -724,6 +728,34 @@ try {
   await page.getByRole("button", { name: "生成一次性凭证" }).click();
   await page.getByLabel("一次性凭证").waitFor();
   const priorCredential = await page.getByLabel("一次性凭证").inputValue();
+  await page.getByLabel("操作").selectOption("claim");
+  await page.getByLabel("待认领账号的占位邮箱").fill("fr-browser@fastresearch.invalid");
+  await page.getByLabel("认领后的登录邮箱").fill("claimed-research@example.test");
+  await page.getByRole("button", { name: "生成一次性凭证" }).click();
+  await page.getByLabel("一次性凭证").waitFor();
+  const claimCode = await page.getByLabel("一次性凭证").inputValue();
+  assert.notEqual(claimCode, priorCredential);
+  const claimContext = await browser.newContext();
+  try {
+    const claimPage = await claimContext.newPage();
+    await claimPage.goto(`${origin}/login?tab=register`);
+    await claimPage.getByRole("button", { name: "绑定已有账号", exact: true }).click();
+    await claimPage.getByLabel("邀请码", { exact: true }).fill(claimCode);
+    await claimPage.getByLabel("原 FastResearch 账户姓名").fill("Legacy Research Account");
+    await claimPage.getByLabel("新密码", { exact: true }).fill("research-owner-password-123");
+    await claimPage.getByLabel("确认新密码").fill("research-owner-password-123");
+    await claimPage.getByRole("button", { name: "绑定 FastResearch 账号" }).click();
+    await claimPage.getByRole("status").getByText("账号已绑定", { exact: false }).waitFor();
+    await claimPage.getByRole("link", { name: "前往登录" }).first().click();
+    await claimPage.locator("input[name=email]").fill("claimed-research@example.test");
+    await claimPage.locator("input[name=password]").fill("research-owner-password-123");
+    await claimPage.getByRole("button", { name: "登录", exact: true }).click();
+    await claimPage.waitForURL(`${origin}/console/`);
+    const claimedIdentity = await (await claimContext.request.get(`${origin}/api/v1/me`)).json();
+    assert.equal(claimedIdentity.user.id, "legacy-research-subject");
+  } finally {
+    await claimContext.close();
+  }
   await page.getByLabel("操作").selectOption("mfa_reset");
   await page.getByLabel("目标邮箱").fill("admin@example.test");
   await page.getByRole("button", { name: "生成一次性凭证" }).click();

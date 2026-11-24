@@ -270,6 +270,9 @@ func (s *Store) IssueCredential(ctx context.Context, actor, kind, email string) 
 	if err != nil {
 		return "", err
 	}
+	if strings.HasSuffix(email, importedEmailSuffix) {
+		return "", ErrForbidden
+	}
 	raw := RandomToken()
 	tx, err := s.DB.Begin(ctx)
 	if err != nil {
@@ -431,7 +434,9 @@ func (s *Store) RedeemCredential(ctx context.Context, kind, raw, name, password 
 		id = RandomToken()
 		_, err = tx.Exec(ctx, `INSERT INTO identities(id,email,name,password_hash) VALUES($1,$2,$3,$4)`, id, email, name, encoded)
 	} else {
-		err = tx.QueryRow(ctx, `UPDATE identities SET password_hash=$2 WHERE email=$1 AND status='active' RETURNING id`, email, encoded).Scan(&id)
+		err = tx.QueryRow(ctx, `UPDATE identities SET password_hash=$2 WHERE email=$1 AND status='active'
+		 AND NOT EXISTS(SELECT 1 FROM fastresearch_imports WHERE identity_id=identities.id AND claimed_at IS NULL)
+		 RETURNING id`, email, encoded).Scan(&id)
 		if err == nil {
 			err = revokeIdentityAccess(ctx, tx, id)
 		}

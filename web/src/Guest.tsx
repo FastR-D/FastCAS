@@ -1,10 +1,10 @@
-import { KeyRound, ShieldCheck, UserPlus } from "lucide-react";
+import { KeyRound, Link, ShieldCheck, UserPlus } from "lucide-react";
 import { Icon } from "./Icon";
 import { Alert } from "@fastrd/ui-react";
 import { Button, TextField } from "@fastrd/ui-react";
 import { useState } from "react";
 
-type Flow = "invite" | "recovery" | "mfa_reset";
+type Flow = "invite" | "claim" | "recovery" | "mfa_reset";
 export type InitialCredential = { flow: Flow; token: string } | null;
 
 // Remove one-time credentials from the address bar before React starts any requests.
@@ -21,7 +21,7 @@ export function takeInitialCredential(): InitialCredential {
     "",
     window.location.pathname + (search ? "?" + search : "") + window.location.hash,
   );
-  return flow === "invite" || flow === "recovery" || flow === "mfa_reset"
+  return flow === "invite" || flow === "claim" || flow === "recovery" || flow === "mfa_reset"
     ? { flow, token: token ?? "" }
     : null;
 }
@@ -60,7 +60,9 @@ export function Guest({ initial, onLogin }: {
             ? "register"
             : flow === "recovery"
               ? "recover"
-              : "recover-mfa"),
+                : flow === "claim"
+                  ? "claim"
+                  : "recover-mfa"),
         {
           method: "POST",
           credentials: "same-origin",
@@ -68,7 +70,7 @@ export function Guest({ initial, onLogin }: {
           body: JSON.stringify(
             flow === "mfa_reset"
               ? { token, password }
-              : { token, name: flow === "invite" ? name : "", password },
+              : { token, name: flow === "invite" || flow === "claim" ? name : "", password },
           ),
         },
       );
@@ -76,7 +78,11 @@ export function Guest({ initial, onLogin }: {
         setError(
           response.status === 429
             ? "尝试次数过多，请稍后再试"
-            : "凭证无效、已使用或已过期",
+            : flow === "claim"
+              ? response.status === 409
+                ? "登录邮箱已被占用，请联系管理员重新签发邀请码"
+                : "请核对原账户姓名及邀请码。邀请码可能已使用或过期"
+              : "凭证无效、已使用或已过期",
         );
         return;
       }
@@ -97,7 +103,9 @@ export function Guest({ initial, onLogin }: {
           ? "接受邀请"
           : flow === "recovery"
             ? "恢复 FastCAS 密码"
-            : "重置 FastCAS 双重验证"}
+            : flow === "claim"
+              ? "绑定已有 FastResearch 账号"
+              : "重置 FastCAS 双重验证"}
       </h2>
       {complete ? (
         <>
@@ -106,8 +114,10 @@ export function Guest({ initial, onLogin }: {
               ? "账号已创建"
               : flow === "recovery"
                 ? "密码已更新"
-                : "双重验证已重置"}
-            。现在可以登录 FastCAS。
+                : flow === "claim"
+                  ? "账号已绑定，请使用管理员提供的登录邮箱和新密码登录"
+                  : "双重验证已重置"}
+            {flow === "claim" ? "。" : "。现在可以登录 FastCAS。"}
           </Alert>
           <a
             href="/login"
@@ -136,6 +146,15 @@ export function Guest({ initial, onLogin }: {
             <Button
               type="button"
               disabled={busy}
+              aria-current={flow === "claim" ? "page" : undefined}
+              onClick={() => selectFlow("claim")}
+            >
+              <Icon icon={Link} />
+              绑定已有账号
+            </Button>
+            <Button
+              type="button"
+              disabled={busy}
               aria-current={flow === "recovery" ? "page" : undefined}
               onClick={() => {
                 selectFlow("recovery");
@@ -158,7 +177,7 @@ export function Guest({ initial, onLogin }: {
           </div>
             <form onSubmit={(e) => void redeem(e)}>
               <label>
-                一次性凭证
+                {flow === "claim" ? "邀请码" : "一次性凭证"}
                 <TextField
                   autoComplete="off"
                   required
@@ -166,9 +185,9 @@ export function Guest({ initial, onLogin }: {
                   onChange={(e) => setToken(e.target.value)}
                 />
               </label>
-              {flow === "invite" && (
+              {(flow === "invite" || flow === "claim") && (
                 <label>
-                  姓名
+                  {flow === "claim" ? "原 FastResearch 账户姓名" : "姓名"}
                   <TextField
                     autoComplete="name"
                     required
@@ -211,7 +230,9 @@ export function Guest({ initial, onLogin }: {
                     ? "创建 FastCAS 账号"
                     : flow === "recovery"
                       ? "更新 FastCAS 密码"
-                      : "重置双重验证"}
+                      : flow === "claim"
+                        ? "绑定 FastResearch 账号"
+                        : "重置双重验证"}
               </Button>
             </form>
           </>

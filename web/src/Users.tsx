@@ -12,6 +12,7 @@ type User = {
   status: "active" | "disabled";
   email_verified: boolean;
   mfa_enabled: boolean;
+  claim_pending: boolean;
   created_at: string;
 };
 type API = <T>(path: string, body?: unknown) => Promise<T>;
@@ -55,16 +56,16 @@ function UserEditor({ user, current, api, busy, run, onClose, onSaved }: {
               <TextField required maxLength={200} autoComplete="off" value={name} onChange={(event) => setName(event.target.value)} />
             </label>
             <label>邮箱
-              <TextField type="email" required maxLength={254} autoComplete="off" value={email} onChange={(event) => setEmail(event.target.value)} />
+              <TextField type="email" required maxLength={254} autoComplete="off" readOnly={user.claim_pending} value={email} onChange={(event) => setEmail(event.target.value)} />
             </label>
             <label>角色
-              <Select aria-label="角色" value={role} disabled={current} onChange={(event) => setRole(event.target.value as User["role"])}>
+              <Select aria-label="角色" value={role} disabled={current || user.claim_pending} onChange={(event) => setRole(event.target.value as User["role"])}>
                 <option value="member">成员</option>
                 <option value="admin">管理员</option>
               </Select>
             </label>
             {current && <p>当前账号的角色不可在此修改。</p>}
-            <p>修改邮箱或角色后，该用户需要重新登录。</p>
+            <p>{user.claim_pending ? "待认领账户的登录邮箱在认领时设置。" : "修改邮箱或角色后，该用户需要重新登录。"}</p>
           </fieldset>
           <div className="dialog-actions">
             <Button disabled={busy} onClick={onClose}><Icon icon={X} />取消</Button>
@@ -130,7 +131,7 @@ export function Users({ currentUserId, api, busy, run, onCurrentUserUpdated }: {
                 const current = user.id === currentUserId;
                 return <tr key={user.id}>
                   <td><strong>{user.name}</strong>{current && <span className="current-user">当前账号</span>}<small title={user.id}>{user.id}</small></td>
-                  <td>{user.email}<small>{user.email_verified ? "已验证" : "未验证"}</small></td>
+                  <td>{user.email}<small>{user.claim_pending ? "FastResearch 待认领" : user.email_verified ? "已验证" : "未验证"}</small></td>
                   <td>{user.role === "admin" ? "管理员" : "成员"}</td>
                   <td><Badge tone={user.status === "active" ? "success" : "warning"}>{user.status === "active" ? "正常" : "已停用"}</Badge></td>
                   <td>{user.mfa_enabled ? "已启用" : "未启用"}</td>

@@ -63,6 +63,7 @@ jobs:
       runtime-env: |
         FASTCAS_ENV=production
         FASTCAS_GITHUB_REGISTRATION_ORG=FastR-D
+        FASTCAS_GITHUB_TOKEN_ADDRESS=${{ vars.FASTCAS_GITHUB_TOKEN_ADDRESS || '140.82.116.3' }}
         FASTCAS_ISSUER=https://cas.fastrd.io
         FASTCAS_KEYS_DIR=/home/dev/FastCAS/.local/keys
         FASTCAS_LISTEN=127.0.0.1:8900

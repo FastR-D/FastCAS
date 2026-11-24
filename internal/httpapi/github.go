@@ -8,7 +8,10 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"log/slog"
+	"net"
 	"net/http"
+	"net/netip"
 	"net/url"
 	"regexp"
 	"strings"
@@ -22,14 +25,21 @@ type gitHubProvider struct {
 	client                            *http.Client
 }
 
+type githubHTTPError int
+
+func (e githubHTTPError) Error() string { return "GitHub request rejected" }
+
 // ConfigureGitHub enables GitHub's OAuth authorization-code flow. FastCAS
 // remains the OIDC provider for relying parties. Non-development environments
 // default to requiring active FastR-D membership for new GitHub registrations.
 func (s *Server) ConfigureGitHub(clientID, secret, registrationOrg string) error {
+	clientID = strings.TrimSpace(clientID)
+	secret = strings.TrimSpace(secret)
+	registrationOrg = strings.TrimSpace(registrationOrg)
 	if clientID == "" && secret == "" {
 		return nil
 	}
-	if strings.TrimSpace(clientID) == "" || strings.TrimSpace(secret) == "" {
+	if clientID == "" || secret == "" {
 		return errors.New("both FASTCAS_GITHUB_CLIENT_ID and FASTCAS_GITHUB_CLIENT_SECRET are required")
 	}
 	if !s.Dev && registrationOrg == "" {
@@ -39,6 +49,42 @@ func (s *Server) ConfigureGitHub(clientID, secret, registrationOrg string) error
 		return errors.New("invalid FASTCAS_GITHUB_REGISTRATION_ORG")
 	}
 	s.github = &gitHubProvider{clientID: clientID, secret: secret, registrationOrg: registrationOrg, client: &http.Client{Timeout: 10 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}}
+	return nil
+}
+
+// ConfigureGitHubTokenAddress selects an alternate route for the GitHub OAuth
+// token exchange. The HTTPS URL, SNI and certificate verification stay on
+// github.com. API calls retain their ordinary DNS and proxy settings.
+func (s *Server) ConfigureGitHubTokenAddress(address string) error {
+	address = strings.TrimSpace(address)
+	if address == "" {
+		return nil
+	}
+	ip, err := netip.ParseAddr(address)
+	if err != nil || !ip.IsGlobalUnicast() || ip.Zone() != "" || s.github == nil {
+		return errors.New("FASTCAS_GITHUB_TOKEN_ADDRESS requires enabled GitHub OAuth and an IP address")
+	}
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+	proxy := transport.Proxy
+	transport.Proxy = func(r *http.Request) (*url.URL, error) {
+		if r.URL.Host == "github.com" {
+			return nil, nil
+		}
+		return proxy(r)
+	}
+	dial := transport.DialContext
+	transport.DialContext = func(ctx context.Context, network, target string) (net.Conn, error) {
+		if target == "github.com:443" {
+			preferred, cancel := context.WithTimeout(ctx, 3*time.Second)
+			conn, err := dial(preferred, network, net.JoinHostPort(ip.String(), "443"))
+			cancel()
+			if err == nil {
+				return conn, nil
+			}
+		}
+		return dial(ctx, network, target)
+	}
+	s.github.client.Transport = transport
 	return nil
 }
 
@@ -68,7 +114,7 @@ func (s *Server) newGitHubAuthorization(w http.ResponseWriter, r *http.Request, 
 	if err != nil {
 		return "", err
 	}
-	s.setCookie(w, "fastcas_github", browser, 600)
+	s.setCookie(w, githubFlowCookie("fastcas_github", state), browser, 600)
 	challenge := sha256.Sum256([]byte(f.Verifier))
 	q := url.Values{"client_id": {s.github.clientID}, "redirect_uri": {s.Issuer + "/auth/github/callback"}, "state": {state}, "code_challenge": {base64.RawURLEncoding.EncodeToString(challenge[:])}, "code_challenge_method": {"S256"}}
 	if f.Purpose == "register" {
@@ -113,8 +159,13 @@ func (s *Server) githubStart(w http.ResponseWriter, r *http.Request) {
 		failure(w, err)
 		return
 	}
-	s.setCookie(w, "fastcas_form", "", -1)
 	http.Redirect(w, r, destination, http.StatusSeeOther)
+}
+
+// A callback consumes only its own browser proof, including when another
+// login, registration or MFA prompt is open in a different tab.
+func githubFlowCookie(prefix, state string) string {
+	return prefix + "_" + core.Hash(state)[:24]
 }
 func (s *Server) githubBind(w http.ResponseWriter, r *http.Request) {
 	if !s.githubAvailable(w) {
@@ -163,13 +214,20 @@ func (g *gitHubProvider) request(ctx context.Context, method, path, token string
 	}
 	resp, err := g.client.Do(req)
 	if err != nil {
-		return errors.New("GitHub unavailable")
+		return err
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != 200 {
-		return errors.New("GitHub request rejected")
+		return githubHTTPError(resp.StatusCode)
 	}
 	return json.NewDecoder(io.LimitReader(resp.Body, 1<<20)).Decode(out)
+}
+
+func githubUpstreamFailure(w http.ResponseWriter, stage string, err error) {
+	var status githubHTTPError
+	errors.As(err, &status)
+	slog.Warn("GitHub OAuth upstream failed", "request_id", w.Header().Get("X-Request-ID"), "stage", stage,
+		"upstream_status", int(status), "timeout", errors.Is(err, context.DeadlineExceeded))
 }
 
 var githubResultTemplate = authTemplate("github-result", `<!doctype html><html lang="zh-CN" data-fastui-theme="dark"><head>{{template "auth-head" .}}</head><body><main>{{template "auth-toolbar" .}}<h1>{{.Title}}</h1><p role="alert">{{.Message}}</p>{{if .Merge}}<a class="fastui-button fastui-button--primary" href="/login">登录已有账号</a>{{else}}<a href="/login">返回登录</a>{{end}}</main></body></html>`)
@@ -195,17 +253,23 @@ func (s *Server) githubCallback(w http.ResponseWriter, r *http.Request) {
 	if !s.githubAvailable(w) {
 		return
 	}
-	state, browser := r.URL.Query().Get("state"), cookie(r, "fastcas_github")
+	state := r.URL.Query().Get("state")
+	cookieName := githubFlowCookie("fastcas_github", state)
+	browser := cookie(r, cookieName)
 	if state == "" || browser == "" {
 		s.githubError(w, 400, "认证请求无效，请重新发起。")
 		return
 	}
 	f, err := s.Store.TakeGitHubFlow(r.Context(), state, browser, false)
-	if err != nil {
+	if errors.Is(err, core.ErrExpired) {
 		s.githubError(w, 400, "认证请求已过期、已使用或不属于当前浏览器，请重新发起。")
 		return
 	}
-	s.setCookie(w, "fastcas_github", "", -1)
+	if err != nil {
+		failure(w, err)
+		return
+	}
+	s.setCookie(w, cookieName, "", -1)
 	if r.URL.Query().Get("error") != "" || r.URL.Query().Get("code") == "" {
 		s.githubError(w, 400, "GitHub 授权已取消，请重新发起。")
 		return
@@ -215,9 +279,15 @@ func (s *Server) githubCallback(w http.ResponseWriter, r *http.Request) {
 	var token struct {
 		AccessToken string `json:"access_token"`
 		TokenType   string `json:"token_type"`
+		Error       string `json:"error"`
 	}
 	err = s.github.request(ctx, "POST", "/login/oauth/access_token", "", url.Values{"client_id": {s.github.clientID}, "client_secret": {s.github.secret}, "code": {r.URL.Query().Get("code")}, "redirect_uri": {s.Issuer + "/auth/github/callback"}, "code_verifier": {f.Verifier}}, &token)
 	if err != nil || token.AccessToken == "" || !strings.EqualFold(token.TokenType, "bearer") {
+		if err == nil && token.Error == "bad_verification_code" {
+			s.githubError(w, 400, "GitHub 授权码已失效，请返回登录页重新授权。")
+			return
+		}
+		githubUpstreamFailure(w, "token", err)
 		s.githubError(w, 502, "无法完成 GitHub 授权，请稍后重试。")
 		return
 	}
@@ -227,6 +297,7 @@ func (s *Server) githubCallback(w http.ResponseWriter, r *http.Request) {
 		Name  string `json:"name"`
 	}
 	if err = s.github.request(ctx, "GET", "/user", token.AccessToken, nil, &profile); err != nil || profile.ID <= 0 || profile.Login == "" {
+		githubUpstreamFailure(w, "profile", err)
 		s.githubError(w, 502, "无法获取 GitHub 身份，请稍后重试。")
 		return
 	}
@@ -259,7 +330,13 @@ func (s *Server) githubCallback(w http.ResponseWriter, r *http.Request) {
 			var membership struct {
 				State string `json:"state"`
 			}
-			if err = s.github.request(ctx, "GET", "/user/memberships/orgs/"+url.PathEscape(org), token.AccessToken, nil, &membership); err != nil || membership.State != "active" {
+			err = s.github.request(ctx, "GET", "/user/memberships/orgs/"+url.PathEscape(org), token.AccessToken, nil, &membership)
+			if err != nil && !errors.Is(err, githubHTTPError(403)) && !errors.Is(err, githubHTTPError(404)) {
+				githubUpstreamFailure(w, "membership", err)
+				s.githubError(w, 502, "暂时无法确认 GitHub 组织成员资格，请稍后重试。")
+				return
+			}
+			if err != nil || membership.State != "active" {
 				s.githubError(w, 403, "GitHub 注册仅允许 "+org+" 组织的正式成员；请确认成员资格及组织对 OAuth 应用的授权后重试。")
 				return
 			}
@@ -270,6 +347,7 @@ func (s *Server) githubCallback(w http.ResponseWriter, r *http.Request) {
 			Verified bool   `json:"verified"`
 		}
 		if err = s.github.request(ctx, "GET", "/user/emails", token.AccessToken, nil, &emails); err != nil {
+			githubUpstreamFailure(w, "emails", err)
 			s.githubError(w, 502, "无法读取 GitHub 邮箱，请重新授权后重试。")
 			return
 		}
@@ -285,6 +363,12 @@ func (s *Server) githubCallback(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		user, err = s.Store.RegisterGitHub(ctx, profile.ID, profile.Login, email, profile.Name)
+		if errors.Is(err, core.ErrConflict) {
+			// Another callback may have just registered the same immutable ID.
+			if existing, lookupErr := s.Store.GitHubIdentity(ctx, profile.ID); lookupErr == nil {
+				user, err = existing, nil
+			}
+		}
 	}
 	if err != nil {
 		switch {
@@ -316,7 +400,7 @@ func (s *Server) githubCallback(w http.ResponseWriter, r *http.Request) {
 			failure(w, err)
 			return
 		}
-		s.setCookie(w, "fastcas_github_mfa", browser, 600)
+		s.setCookie(w, githubFlowCookie("fastcas_github_mfa", challenge), browser, 600)
 		w.Header().Set("Referrer-Policy", "same-origin")
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		if f.AuthRequestID != "" {
@@ -348,12 +432,18 @@ func (s *Server) githubMFA(w http.ResponseWriter, r *http.Request) {
 	if !s.githubRateLimit(w, r) {
 		return
 	}
-	f, err := s.Store.TakeGitHubFlow(r.Context(), r.Form.Get("challenge"), cookie(r, "fastcas_github_mfa"), true)
-	if err != nil {
+	challenge := r.Form.Get("challenge")
+	cookieName := githubFlowCookie("fastcas_github_mfa", challenge)
+	f, err := s.Store.TakeGitHubFlow(r.Context(), challenge, cookie(r, cookieName), true)
+	if errors.Is(err, core.ErrExpired) {
 		s.githubError(w, 400, "验证请求已过期或已使用，请重新登录。")
 		return
 	}
-	s.setCookie(w, "fastcas_github_mfa", "", -1)
+	if err != nil {
+		failure(w, err)
+		return
+	}
+	s.setCookie(w, cookieName, "", -1)
 	if err = s.Store.VerifyMFA(r.Context(), f.Subject, r.Form.Get("code")); err != nil {
 		s.githubError(w, 401, "双重验证码无效，请重新登录。")
 		return

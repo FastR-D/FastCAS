@@ -10,8 +10,9 @@ import (
 
 type ManagedIdentity struct {
 	Identity
-	CreatedAt  time.Time `json:"created_at"`
-	MFAEnabled bool      `json:"mfa_enabled"`
+	CreatedAt    time.Time `json:"created_at"`
+	MFAEnabled   bool      `json:"mfa_enabled"`
+	ClaimPending bool      `json:"claim_pending"`
 }
 
 // Use the same lock as status changes so concurrent demotions/deletions cannot
@@ -61,11 +62,17 @@ func (s *Store) UpdateIdentity(ctx context.Context, actor, id, email, name, role
 		return nil, err
 	}
 	var oldEmail, oldRole, status string
-	if err = tx.QueryRow(ctx, `SELECT email,role,status FROM identities WHERE id=$1 AND deleted_at IS NULL FOR UPDATE`, id).Scan(&oldEmail, &oldRole, &status); err != nil {
+	var claimPending bool
+	if err = tx.QueryRow(ctx, `SELECT email,role,status,
+	 EXISTS(SELECT 1 FROM fastresearch_imports WHERE identity_id=$1 AND claimed_at IS NULL)
+	 FROM identities WHERE id=$1 AND deleted_at IS NULL FOR UPDATE`, id).Scan(&oldEmail, &oldRole, &status, &claimPending); err != nil {
 		if err == pgx.ErrNoRows {
 			return nil, ErrForbidden
 		}
 		return nil, err
+	}
+	if claimPending && (oldEmail != email || oldRole != role) {
+		return nil, ErrForbidden
 	}
 	if oldRole != role {
 		if actor == id {
@@ -76,6 +83,7 @@ func (s *Store) UpdateIdentity(ctx context.Context, actor, id, email, name, role
 		}
 	}
 	var updated ManagedIdentity
+	updated.ClaimPending = claimPending
 	err = tx.QueryRow(ctx, `UPDATE identities SET name=$2,email=$3,role=$4,email_verified=CASE WHEN email=$3 THEN email_verified ELSE false END
 	 WHERE id=$1 RETURNING id,email,name,role,status,email_verified,created_at,mfa_secret IS NOT NULL`, id, name, email, role).Scan(
 		&updated.ID, &updated.Email, &updated.Name, &updated.Role, &updated.Status, &updated.EmailVerified, &updated.CreatedAt, &updated.MFAEnabled)
