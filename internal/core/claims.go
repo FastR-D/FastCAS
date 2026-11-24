@@ -10,7 +10,7 @@ import (
 
 const importedEmailSuffix = "@fastresearch.invalid"
 
-func (s *Store) IssueClaim(ctx context.Context, actor, target, email string) (string, error) {
+func (s *Store) IssueClaim(ctx context.Context, actor, target, email string, proofOnly bool) (string, error) {
 	target = strings.ToLower(strings.TrimSpace(target))
 	email, err := validEmail(email)
 	if err != nil || strings.HasSuffix(email, importedEmailSuffix) {
@@ -40,30 +40,39 @@ func (s *Store) IssueClaim(ctx context.Context, actor, target, email string) (st
 		return "", ErrConflict
 	}
 	if _, err = tx.Exec(ctx, `UPDATE one_time_credentials SET consumed_at=now()
- WHERE identity_id=$1 AND kind='claim' AND consumed_at IS NULL`, id); err != nil {
+ WHERE identity_id=$1 AND kind IN ('claim','claim_proof') AND consumed_at IS NULL`, id); err != nil {
 		return "", err
+	}
+	kind := "claim"
+	if proofOnly {
+		kind = "claim_proof"
 	}
 	raw := RandomToken()
 	if _, err = tx.Exec(ctx, `INSERT INTO one_time_credentials(token_hash,kind,email,identity_id,expires_at)
- VALUES($1,'claim',$2,$3,now()+interval '1 hour')`, Hash(raw), email, id); err != nil {
+ VALUES($1,$2,$3,$4,now()+interval '1 hour')`, Hash(raw), kind, email, id); err != nil {
 		return "", err
 	}
-	if err = audit(ctx, tx, actor, "credential.issue.claim", id); err != nil {
+	if err = audit(ctx, tx, actor, "credential.issue."+kind, id); err != nil {
 		return "", err
 	}
 	return raw, tx.Commit(ctx)
 }
 
-func (s *Store) RedeemClaim(ctx context.Context, raw, name, password string) (*Identity, error) {
+func (s *Store) RedeemClaim(ctx context.Context, raw, accountToken, name, password string) (*Identity, error) {
 	name = strings.TrimSpace(name)
-	if name == "" || len(name) > 200 || raw == "" || len(raw) > 128 {
+	kind, proof := "claim", raw
+	reusable := IsReusableInvite(raw)
+	if reusable {
+		kind, proof = "claim_proof", strings.TrimSpace(accountToken)
+	}
+	if name == "" || len(name) > 200 || proof == "" || len(proof) > 128 {
 		return nil, ErrExpired
 	}
-	hash := Hash(raw)
+	hash := Hash(proof)
 	var id string
 	err := s.DB.QueryRow(ctx, `SELECT c.identity_id FROM one_time_credentials c JOIN fastresearch_imports f ON f.identity_id=c.identity_id
- WHERE c.token_hash=$1 AND c.kind='claim' AND c.expires_at>now() AND c.consumed_at IS NULL
- AND f.claimed_at IS NULL AND f.legacy_name=$2`, hash, name).Scan(&id)
+ WHERE c.token_hash=$1 AND c.kind=$2 AND c.expires_at>now() AND c.consumed_at IS NULL
+ AND f.claimed_at IS NULL AND f.legacy_name=$3`, hash, kind, name).Scan(&id)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrExpired
 	}
@@ -91,9 +100,14 @@ func (s *Store) RedeemClaim(ctx context.Context, raw, name, password string) (*I
 	if err != nil {
 		return nil, err
 	}
+	if reusable {
+		if err = consumeReusableInvite(ctx, tx, raw, "claim"); err != nil {
+			return nil, err
+		}
+	}
 	var email string
 	err = tx.QueryRow(ctx, `UPDATE one_time_credentials SET consumed_at=now()
- WHERE token_hash=$1 AND identity_id=$2 AND kind='claim' AND expires_at>now() AND consumed_at IS NULL RETURNING email`, hash, id).Scan(&email)
+ WHERE token_hash=$1 AND identity_id=$2 AND kind=$3 AND expires_at>now() AND consumed_at IS NULL RETURNING email`, hash, id, kind).Scan(&email)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrExpired
 	}
@@ -109,7 +123,7 @@ func (s *Store) RedeemClaim(ctx context.Context, raw, name, password string) (*I
 	if _, err = tx.Exec(ctx, `UPDATE fastresearch_imports SET claimed_at=now() WHERE identity_id=$1`, id); err != nil {
 		return nil, err
 	}
-	if err = audit(ctx, tx, id, "credential.redeem.claim", id); err != nil {
+	if err = audit(ctx, tx, id, "credential.redeem."+kind, id); err != nil {
 		return nil, err
 	}
 	if err = tx.Commit(ctx); err != nil {

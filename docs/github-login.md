@@ -42,6 +42,7 @@ GitHub 官方说明：[OAuth 授权与 PKCE](https://docs.github.com/en/apps/oau
 
 - 管理员在「用户管理」可看到待认领账户及其占位邮箱。在「邀请与恢复」选择「绑定已有 FastResearch 账号」，填写该占位邮箱及持有人的登录邮箱，私下交付一次性邀请码。邀请码一小时有效，重发会使旧码失效。
 - 持有人在登录页选择「注册 → 绑定已有账号」，输入邀请码、原 FastResearch 账户姓名并设置新密码。此后用管理员指定的邮箱登录，FastResearch 继续使用原账户资料。在安全中心可绑定尚未关联的 GitHub 身份。
+- 管理员也可签发「通用邀请码」，设置有效期、使用次数和用途。多个账户可以使用同一码注册或绑定，两种用途共享成功使用次数。注册时用户填写登录邮箱。用通用邀请码绑定时，管理员须另为每位旧账户持有人签发专属绑定凭证。
 - 迁移工具 `scripts/import-fastresearch-accounts.py` 默认只读预览。备份 FastCAS PostgreSQL 和 FastResearch SQLite 后，先应用 FastCAS 数据库迁移，再以 `--apply` 写入。工具按稳定账户 ID 建立关联，支持跨数据库写入中断后重试。
 
 ## 验证

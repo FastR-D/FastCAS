@@ -295,22 +295,32 @@ func (s *Server) redeem(w http.ResponseWriter, r *http.Request, kind string) {
 		return
 	}
 	var input struct {
-		Token    string `json:"token"`
-		Name     string `json:"name"`
-		Password string `json:"password"`
+		Token        string `json:"token"`
+		AccountToken string `json:"account_token"`
+		Email        string `json:"email"`
+		Name         string `json:"name"`
+		Password     string `json:"password"`
 	}
 	if decode(r, &input) != nil {
 		failure(w, core.ErrForbidden)
 		return
 	}
 	var user *core.Identity
-	if kind == "claim" {
-		user, err = s.Store.RedeemClaim(r.Context(), strings.TrimSpace(input.Token), input.Name, input.Password)
+	token := strings.TrimSpace(input.Token)
+	switch {
+	case kind == "claim":
+		user, err = s.Store.RedeemClaim(r.Context(), token, input.AccountToken, input.Name, input.Password)
 		if errors.Is(err, core.ErrConflict) {
 			problem(w, 409, "claim_email_unavailable", "登录邮箱已被占用，请联系管理员重新签发邀请码")
 			return
 		}
-	} else {
+	case kind == "invite" && core.IsReusableInvite(token):
+		user, err = s.Store.RedeemReusableRegistration(r.Context(), token, input.Email, input.Name, input.Password)
+		if errors.Is(err, core.ErrConflict) {
+			problem(w, 409, "invite_email_unavailable", "登录邮箱已被占用")
+			return
+		}
+	default:
 		user, err = s.Store.RedeemCredential(r.Context(), kind, input.Token, input.Name, input.Password)
 	}
 	if err != nil {
@@ -534,6 +544,7 @@ func (s *Server) issueCredential(w http.ResponseWriter, r *http.Request) {
 		Kind        string `json:"kind"`
 		Email       string `json:"email"`
 		TargetEmail string `json:"target_email"`
+		core.ReusableInviteOptions
 	}
 	if decode(r, &input) != nil {
 		failure(w, core.ErrForbidden)
@@ -541,8 +552,11 @@ func (s *Server) issueCredential(w http.ResponseWriter, r *http.Request) {
 	}
 	var raw string
 	var err error
-	if input.Kind == "claim" {
-		raw, err = s.Store.IssueClaim(r.Context(), session.IdentityID, input.TargetEmail, input.Email)
+	switch input.Kind {
+	case "reusable_invite":
+		raw, err = s.Store.IssueReusableInvite(r.Context(), session.IdentityID, input.ReusableInviteOptions)
+	case "claim", "claim_proof":
+		raw, err = s.Store.IssueClaim(r.Context(), session.IdentityID, input.TargetEmail, input.Email, input.Kind == "claim_proof")
 		if errors.Is(err, core.ErrForbidden) {
 			problem(w, 403, "claim_target_unavailable", "请填写可认领的 FastResearch 账户和有效的登录邮箱")
 			return
@@ -551,14 +565,14 @@ func (s *Server) issueCredential(w http.ResponseWriter, r *http.Request) {
 			problem(w, 409, "claim_email_unavailable", "登录邮箱已被占用")
 			return
 		}
-	} else {
+	default:
 		raw, err = s.Store.IssueCredential(r.Context(), session.IdentityID, input.Kind, input.Email)
 	}
 	if err != nil {
 		failure(w, err)
 		return
 	}
-	send(w, 201, map[string]string{"token": raw, "delivery": "Deliver privately to the intended account owner. This token is shown only once."})
+	send(w, 201, map[string]string{"token": raw, "delivery": "Share privately with the intended recipients. This token is shown only once."})
 }
 func (s *Server) applications(w http.ResponseWriter, r *http.Request) {
 	if _, ok := s.authenticated(w, r, true); !ok {

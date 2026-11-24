@@ -194,13 +194,13 @@ dd {
   flex-direction: column;
 }
 .topbar {
-  height: var(--shell-header-height);
+  min-height: var(--shell-header-height);
   flex-shrink: 0;
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 12px;
-  padding: 0 40px;
+  padding: 8px 40px;
   border-bottom: 1px solid var(--fastui-border);
   background: var(--fastui-surface);
 }
@@ -222,15 +222,15 @@ dd {
   gap: 12px;
   align-items: center;
 }
-.topbar-actions .fastui-select {
-  width: 112px;
-  font-size: 12px;
-}
-.theme-control {
-  display: inline-flex;
+.account-summary {
+  display: flex;
   align-items: center;
   gap: 8px;
-  color: var(--fastui-muted);
+  max-width: min(36ch, 40vw);
+  overflow-wrap: anywhere;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--fastui-secondary);
 }
 .icon-heading {
   display: flex;
@@ -243,6 +243,7 @@ dd {
 .avatar {
   display: grid;
   place-items: center;
+  flex-shrink: 0;
   border: 1px solid var(--fastui-border);
   background: var(--fastui-raised);
   border-radius: 50%;
@@ -259,21 +260,6 @@ main {
   margin: 0 auto;
   flex: 1;
   outline: none;
-}
-.intro {
-  margin-bottom: 30px;
-}
-.intro > p:last-child {
-  max-width: 680px;
-  margin-bottom: 0;
-  font-size: 13px;
-}
-.eyebrow {
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.16em;
-  color: var(--fastui-focus);
-  margin: 0;
 }
 .grid {
   display: grid;

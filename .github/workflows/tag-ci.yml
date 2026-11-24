@@ -32,7 +32,7 @@ jobs:
           cache: pnpm
           cache-dependency-path: web/pnpm-lock.yaml
       - run: go test ./...
-      - run: CGO_ENABLED=0 go build -trimpath -o bin/fastcas ./cmd/fastcas
+      - run: CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o bin/fastcas ./cmd/fastcas
       - run: pnpm install --frozen-lockfile --ignore-scripts && pnpm run build
         working-directory: web
       - name: Checkout pinned FastDeploy packager

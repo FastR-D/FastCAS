@@ -31,6 +31,7 @@ func (s *Store) FenceRestoredState(ctx context.Context) error {
 		`UPDATE device_authorizations SET status='denied' WHERE status IN ('pending','approved')`,
 		`UPDATE exchange_consents SET revoked_at=COALESCE(revoked_at,now()) WHERE revoked_at IS NULL`,
 		`UPDATE one_time_credentials SET consumed_at=COALESCE(consumed_at,now()) WHERE consumed_at IS NULL`,
+		`UPDATE reusable_invites SET remaining_uses=0 WHERE remaining_uses>0`,
 		`INSERT INTO outbox(id,client_id,payload)
 		 SELECT gen_random_uuid()::text,l.client_id,jsonb_build_object('type','account_link.revoked',
 		 'link',jsonb_build_object('id',l.id,'client_id',l.client_id,'local_account_ref',l.local_ref,

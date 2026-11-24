@@ -42,11 +42,11 @@ func TestClaimInviteKeepsImportedIdentity(t *testing.T) {
 	if _, err = store.IssueCredential(ctx, "admin", "recovery", placeholder); !errors.Is(err, core.ErrForbidden) {
 		t.Fatalf("recovery allowed on an unclaimed identity: %v", err)
 	}
-	first, err := store.IssueClaim(ctx, "admin", placeholder, email)
+	first, err := store.IssueClaim(ctx, "admin", placeholder, email, false)
 	if err != nil {
 		t.Fatal(err)
 	}
-	newest, err := store.IssueClaim(ctx, "admin", placeholder, email)
+	newest, err := store.IssueClaim(ctx, "admin", placeholder, email, false)
 	if err != nil {
 		t.Fatal(err)
 	}

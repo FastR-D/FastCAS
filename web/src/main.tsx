@@ -224,13 +224,6 @@ function App() {
       }
     >
       {verification.dialog}
-      <div className="intro">
-        <p className="eyebrow">FAST R&D · IDENTITY</p>
-        <h1>{me ? `你好，${me.user.name}` : "你的科研账号安全中心"}</h1>
-        <p>
-          管理关联身份与登录安全。各项目的本地账号、内容和权限由项目独立管理。
-        </p>
-      </div>
       {busy && (
         <div className="pending">
           <Loading label="正在处理，请稍候…" />

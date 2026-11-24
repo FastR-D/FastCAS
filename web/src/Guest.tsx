@@ -32,15 +32,22 @@ export function Guest({ initial, onLogin }: {
 }) {
   const [flow, setFlow] = useState<Flow>(initial?.flow ?? "invite");
   const [token, setToken] = useState(initial?.token ?? "");
+  const [accountToken, setAccountToken] = useState("");
+  const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
   const [confirmation, setConfirmation] = useState("");
   const [busy, setBusy] = useState(false);
   const [complete, setComplete] = useState(false);
   const [error, setError] = useState("");
+  const reusable = token.trim().startsWith("frinv_");
+  const reusableRegistration = reusable && flow === "invite";
+  const reusableClaim = reusable && flow === "claim";
   function selectFlow(next: Flow) {
     setFlow(next);
-    setToken("");
+    if (!reusable || (next !== "invite" && next !== "claim")) setToken("");
+    setAccountToken("");
+    setEmail("");
     setPassword("");
     setConfirmation("");
     setError("");
@@ -70,7 +77,13 @@ export function Guest({ initial, onLogin }: {
           body: JSON.stringify(
             flow === "mfa_reset"
               ? { token, password }
-              : { token, name: flow === "invite" || flow === "claim" ? name : "", password },
+              : {
+                  token,
+                  name: flow === "invite" || flow === "claim" ? name : "",
+                  password,
+                  ...(reusableRegistration ? { email } : {}),
+                  ...(reusableClaim ? { account_token: accountToken } : {}),
+                },
           ),
         },
       );
@@ -78,16 +91,17 @@ export function Guest({ initial, onLogin }: {
         setError(
           response.status === 429
             ? "尝试次数过多，请稍后再试"
-            : flow === "claim"
-              ? response.status === 409
-                ? "登录邮箱已被占用，请联系管理员重新签发邀请码"
-                : "请核对原账户姓名及邀请码。邀请码可能已使用或过期"
-              : "凭证无效、已使用或已过期",
+            : response.status === 409
+              ? "登录邮箱已被占用"
+              : flow === "claim"
+                ? "请核对原账户姓名和凭证。邀请码可能已用完、已过期或未开放绑定"
+                : "凭证无效、已用完、已过期或未开放此用途",
         );
         return;
       }
       setComplete(true);
       setToken("");
+      setAccountToken("");
       setPassword("");
       setConfirmation("");
     } catch {
@@ -177,7 +191,7 @@ export function Guest({ initial, onLogin }: {
           </div>
             <form onSubmit={(e) => void redeem(e)}>
               <label>
-                {flow === "claim" ? "邀请码" : "一次性凭证"}
+                {flow === "invite" || flow === "claim" ? "邀请码" : "一次性凭证"}
                 <TextField
                   autoComplete="off"
                   required
@@ -185,6 +199,18 @@ export function Guest({ initial, onLogin }: {
                   onChange={(e) => setToken(e.target.value)}
                 />
               </label>
+              {reusableRegistration && (
+                <label>
+                  登录邮箱
+                  <TextField type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+                </label>
+              )}
+              {reusableClaim && (
+                <label>
+                  专属绑定凭证
+                  <TextField autoComplete="off" required value={accountToken} onChange={(e) => setAccountToken(e.target.value)} />
+                </label>
+              )}
               {(flow === "invite" || flow === "claim") && (
                 <label>
                   {flow === "claim" ? "原 FastResearch 账户姓名" : "姓名"}

@@ -60,7 +60,8 @@ S = {
     "GitHubAccount": obj({"id": integer(format="int64"), "login": string()}, ("id", "login")),
     "GitHubAuthorization": obj({"authorization_url": string(format="uri")}, ("authorization_url",)),
     "RedeemCredential": obj({"token": string(), "name": string(), "password": string()}, ("token", "password")),
-    "RedeemClaim": obj({"token": string(), "name": string(), "password": string(minLength=12, maxLength=256)}, ("token", "name", "password")),
+    "RedeemInvitation": obj({"token": string(), "name": string(), "email": string(format="email", description="Required for reusable invitations."), "password": string()}, ("token", "name", "password")),
+    "RedeemClaim": obj({"token": string(), "account_token": string(description="The account-specific binding proof required with a reusable invitation."), "name": string(), "password": string(minLength=12, maxLength=256)}, ("token", "name", "password")),
     "RedeemedCredential": obj({"user": ref("Identity"), "login_required": {"type": "boolean"}}, ("user", "login_required")),
     "RedeemMFAReset": obj({"token": string(), "password": string()}, ("token", "password")),
     "RedeemedMFAReset": obj({"login_required": {"type": "boolean"}}, ("login_required",)),
@@ -73,7 +74,14 @@ S = {
     "CreateLinkIntent": obj({"local_account_ref": string(minLength=1, maxLength=256)}, ("local_account_ref",)),
     "PrepareLink": obj({"nonce": string(), "subject": string()}, ("nonce", "subject")),
     "IdentityStatus": obj({"status": string(enum=["active", "disabled"])}, ("status",)),
-    "IssueCredential": obj({"kind": string(enum=["invite", "recovery", "mfa_reset", "claim"]), "email": string(format="email"), "target_email": string(format="email", description="The imported account's placeholder email. Required for claim invitations.")}, ("kind", "email")),
+    "IssueCredential": obj({
+        "kind": string(enum=["invite", "reusable_invite", "recovery", "mfa_reset", "claim", "claim_proof"]),
+        "email": string(format="email"),
+        "target_email": string(format="email", description="The imported account's placeholder email."),
+        "operations": {"type": "array", "items": string(enum=["register", "claim"]), "minItems": 1, "maxItems": 2, "uniqueItems": True},
+        "max_uses": integer(minimum=1, maximum=10000),
+        "expires_in_hours": integer(minimum=1, maximum=720),
+    }, ("kind",)),
     "CreateServiceAccount": obj({"id": string(), "name": string(), "scopes": ref("NonEmptyStringList"), "resources": ref("NonEmptyStringList"), "development": {"type": "boolean", "default": False}}, ("id", "name", "scopes", "resources")),
     "CreateApplication": obj({"id": string(), "name": string(), "redirect_uris": ref("StringList"), "post_logout_redirect_uris": ref("StringList"), "scopes": ref("StringList"), "resources": ref("StringList"), "grant_types": ref("NonEmptyStringList"), "public": {"type": "boolean"}, "development": {"type": "boolean"}, "backchannel_logout_uri": string(format="uri"), "events_uri": string(format="uri")}, ("id", "name", "grant_types", "public"), "Redirect URIs are required for authorization_code; service-only clients need nonempty scopes and resources and should use /admin/service-accounts."),
     "ServiceStatus": obj({"active": {"type": "boolean"}}, ("active",)),
@@ -83,6 +91,11 @@ S = {
 }
 
 S["ManagedIdentity"] = obj({**S["Identity"]["properties"], "created_at": string(format="date-time"), "mfa_enabled": {"type": "boolean"}, "claim_pending": {"type": "boolean"}}, (*S["Identity"]["required"], "created_at", "mfa_enabled", "claim_pending"))
+S["IssueCredential"]["allOf"] = [
+    {"if": {"properties": {"kind": {"const": "reusable_invite"}}},
+     "then": {"required": ["operations", "max_uses", "expires_in_hours"]}, "else": {"required": ["email"]}},
+    {"if": {"properties": {"kind": {"enum": ["claim", "claim_proof"]}}}, "then": {"required": ["target_email"]}},
+]
 S["UpdateIdentity"] = obj({"name": string(minLength=1, maxLength=200), "email": string(format="email", maxLength=254), "role": string(enum=["member", "admin"])}, ("name", "email", "role"))
 
 S["OneTimeSecret"] = obj({"client_secret": string()}, ("client_secret",), "The credential is returned once and never included in list responses.")
@@ -147,7 +160,7 @@ add("/api/v1/account-links/{id}/revoke", "post", "revokeLink", "Revoke a binding
 PATHS["/api/v1/account-links/{id}/revoke"]["post"]["responses"]["412"] = {"description": "Link version changed; reload before retrying", "content": {"application/json": {"schema": ref("Error")}}}
 PATHS["/api/v1/account-links/{id}/revoke"]["post"]["responses"]["428"] = {"description": "If-Match version required", "content": {"application/json": {"schema": ref("Error")}}}
 
-add("/api/v1/register", "post", "redeemInvitation", "Redeem a FastCAS invitation", public, response(ref("RedeemedCredential")), body="RedeemCredential")
+add("/api/v1/register", "post", "redeemInvitation", "Redeem a one-time or reusable FastCAS invitation", public, response(ref("RedeemedCredential")), body="RedeemInvitation")
 add("/api/v1/claim", "post", "redeemClaim", "Claim an imported FastResearch identity using its invitation and legacy name", public, response(ref("RedeemedCredential")), body="RedeemClaim")
 add("/api/v1/recover", "post", "redeemRecovery", "Redeem a FastCAS password-recovery credential", public, response(ref("RedeemedCredential")), body="RedeemCredential")
 add("/api/v1/recover-mfa", "post", "redeemMFAReset", "Redeem an administrator-issued MFA reset credential with the current FastCAS password", public, response(ref("RedeemedMFAReset")), body="RedeemMFAReset")
@@ -179,7 +192,7 @@ add("/api/v1/admin/identities", "get", "listIdentities", "List FastCAS users", a
 add("/api/v1/admin/identities/{id}", "post", "updateIdentity", "Edit a FastCAS user's name, email and role", admin, response(ref("ManagedIdentity")), body="UpdateIdentity", params=("id",), description="Email/role changes revoke existing FastCAS sessions and authorizations. The current user cannot change their own role; the last active administrator is protected.")
 add("/api/v1/admin/identities/{id}/delete", "post", "deleteIdentity", "Delete a FastCAS user and revoke sessions, bindings and authorizations", admin, response(None, 204), params=("id",), description="Removes the user from lists, clears credentials and profile, and retains an inactive subject tombstone and audit history. Self-deletion and removal of the last active administrator are rejected. Project-local accounts and content are preserved.")
 add("/api/v1/admin/identities/{id}/status", "post", "setIdentityStatus", "Enable or disable a FastCAS identity", admin, response(None, 204), body="IdentityStatus", params=("id",))
-add("/api/v1/admin/credentials", "post", "issueCredential", "Issue a one-time registration invite, account claim invite, password recovery, or MFA reset credential", admin, response(ref("CreatedCredential"), 201), body="IssueCredential")
+add("/api/v1/admin/credentials", "post", "issueCredential", "Issue a FastCAS invitation, account binding proof, or recovery credential", admin, response(ref("CreatedCredential"), 201), body="IssueCredential")
 add("/api/v1/admin/applications", "get", "listApplications", "List registered applications", admin, response(array(ref("Client"))), params=("after",))
 add("/api/v1/admin/applications", "post", "createApplication", "Register an application", admin, response(ref("CreatedApplication"), 201), body="CreateApplication")
 add("/api/v1/admin/applications/{id}/callbacks", "post", "setApplicationCallbacks", "Set application event and logout callbacks", admin, response(ref("Client")), body="ApplicationCallbacks", params=("id",))

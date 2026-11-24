@@ -576,7 +576,7 @@
     "/api/v1/register": {
       "post": {
         "operationId": "redeemInvitation",
-        "summary": "Redeem a FastCAS invitation",
+        "summary": "Redeem a one-time or reusable FastCAS invitation",
         "tags": [
           "Public account"
         ],
@@ -658,7 +658,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/RedeemCredential"
+                "$ref": "#/components/schemas/RedeemInvitation"
               }
             }
           }
@@ -3341,7 +3341,7 @@
     "/api/v1/admin/credentials": {
       "post": {
         "operationId": "issueCredential",
-        "summary": "Issue a one-time registration invite, account claim invite, password recovery, or MFA reset credential",
+        "summary": "Issue a FastCAS invitation, account binding proof, or recovery credential",
         "tags": [
           "Administration"
         ],
@@ -5644,11 +5644,40 @@
           "password"
         ]
       },
+      "RedeemInvitation": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "Required for reusable invitations."
+          },
+          "password": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "token",
+          "name",
+          "password"
+        ]
+      },
       "RedeemClaim": {
         "type": "object",
         "properties": {
           "token": {
             "type": "string"
+          },
+          "account_token": {
+            "type": "string",
+            "description": "The account-specific binding proof required with a reusable invitation."
           },
           "name": {
             "type": "string"
@@ -5849,9 +5878,11 @@
             "type": "string",
             "enum": [
               "invite",
+              "reusable_invite",
               "recovery",
               "mfa_reset",
-              "claim"
+              "claim",
+              "claim_proof"
             ]
           },
           "email": {
@@ -5861,13 +5892,75 @@
           "target_email": {
             "type": "string",
             "format": "email",
-            "description": "The imported account's placeholder email. Required for claim invitations."
+            "description": "The imported account's placeholder email."
+          },
+          "operations": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "register",
+                "claim"
+              ]
+            },
+            "minItems": 1,
+            "maxItems": 2,
+            "uniqueItems": true
+          },
+          "max_uses": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 10000
+          },
+          "expires_in_hours": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 720
           }
         },
         "additionalProperties": false,
         "required": [
-          "kind",
-          "email"
+          "kind"
+        ],
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "kind": {
+                  "const": "reusable_invite"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "operations",
+                "max_uses",
+                "expires_in_hours"
+              ]
+            },
+            "else": {
+              "required": [
+                "email"
+              ]
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "kind": {
+                  "enum": [
+                    "claim",
+                    "claim_proof"
+                  ]
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "target_email"
+              ]
+            }
+          }
         ]
       },
       "CreateServiceAccount": {

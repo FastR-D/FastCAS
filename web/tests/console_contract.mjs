@@ -81,7 +81,7 @@ async function firstPaint(path, stored, system, expected, denyStorage = false) {
       assert.equal(await target.evaluate((initial) => window.fastCASColorMode === initial, controller), true,
         "application replaced the first-paint controller");
       if (path.includes("tab=register")) {
-        await target.getByLabel("一次性凭证").fill("unsubmitted-draft-token");
+        await target.getByLabel("邀请码").fill("unsubmitted-draft-token");
         await target.getByLabel("姓名").fill("主题草稿");
         await target.getByLabel("新密码", { exact: true }).fill("draft-password-123");
         await target.getByLabel("确认新密码").fill("different-password-456");
@@ -102,8 +102,10 @@ async function firstPaint(path, stored, system, expected, denyStorage = false) {
   }
 }
 
+const setConsoleTheme = (mode) => page.evaluate((value) => window.fastCASColorMode.setMode(value), mode);
+
 async function preserveSecurityDraft() {
-  await page.getByLabel("界面主题").selectOption("system");
+  await setConsoleTheme("system");
   const input = page.getByLabel("新 FastCAS 密码", { exact: true });
   await input.fill("preserved-password-draft-123");
   await input.focus();
@@ -118,7 +120,7 @@ async function preserveSecurityDraft() {
   await assertDraft();
   const other = await context.newPage();
   try {
-    await other.goto(origin + "/console/");
+    await other.goto(origin + "/login");
     await other.getByLabel("界面主题").selectOption("light");
     await page.waitForFunction(() => document.documentElement.dataset.fastuiTheme === "light");
     await assertDraft();
@@ -248,7 +250,7 @@ try {
     .locator("input[name=password]")
     .fill("invited-reader-password-123");
   await page.getByRole("button", { name: "登录", exact: true }).click();
-  await page.getByRole("heading", { name: "你好，Invited Reader" }).waitFor();
+  await page.locator(".account-summary").getByText("Invited Reader", { exact: true }).waitFor();
   assert.equal(await page.getByRole("button", { name: "应用管理", exact: true }).count(), 0);
   assert.equal(await page.getByRole("button", { name: "调用策略", exact: true }).count(), 0);
   assert.equal(await page.getByRole("button", { name: "失败投递", exact: true }).count(), 0);
@@ -286,7 +288,7 @@ try {
   await page.locator("input[name=email]").fill("invited@example.test");
   await page.locator("input[name=password]").fill("invited-reader-changed-456");
   await page.getByRole("button", { name: "登录", exact: true }).click();
-  await page.getByRole("heading", { name: "你好，Invited Reader" }).waitFor();
+  await page.locator(".account-summary").getByText("Invited Reader", { exact: true }).waitFor();
   await page.getByRole("button", { name: "登录会话" }).click();
   await page.getByRole("heading", { name: "登录会话" }).waitFor();
   assert.equal(
@@ -325,7 +327,7 @@ try {
   await page.getByRole("button", { name: "拒绝", exact: true }).click();
   await page.getByRole("heading", { name: "设备确认完成" }).waitFor();
   await page.getByRole("link", { name: "返回账号中心" }).click();
-  await page.getByRole("heading", { name: "你好，Invited Reader" }).waitFor();
+  await page.locator(".account-summary").getByText("Invited Reader", { exact: true }).waitFor();
   await page.getByRole("button", { name: "退出", exact: true }).click();
   await page.getByRole("heading", { name: "登录 FastCAS" }).waitFor();
   await page.goto(
@@ -359,7 +361,7 @@ try {
     .locator("input[name=password]")
     .fill("alice-replaced-password-123");
   await page.getByRole("button", { name: "登录", exact: true }).click();
-  await page.getByRole("heading", { name: "你好，Alice" }).waitFor();
+  await page.locator(".account-summary").getByText("Alice", { exact: true }).waitFor();
   await page.getByRole("button", { name: "退出", exact: true }).click();
   await page.getByRole("heading", { name: "登录 FastCAS" }).waitFor();
   await page.goto(`${origin}/login`);
@@ -368,15 +370,19 @@ try {
     .locator("input[name=password]")
     .fill("administrator long password");
   await page.getByRole("button", { name: "登录", exact: true }).click();
-  await page.getByRole("heading", { name: "你好，Administrator" }).waitFor();
+  await page.locator(".account-summary").getByText("Administrator", { exact: true }).waitFor();
   await page.setViewportSize({ width: 1440, height: 1000 });
-  await page.getByLabel("界面主题").selectOption("light");
+  assert.equal(await page.getByLabel("界面主题").count(), 0);
+  assert.equal(await page.getByText("FAST R&D · IDENTITY", { exact: true }).count(), 0);
+  assert.equal(await page.getByText("你好，Administrator", { exact: true }).count(), 0);
+  assert.equal(await page.getByText("管理关联身份与登录安全。", { exact: false }).count(), 0);
+  await setConsoleTheme("light");
   assert.equal(
     await page.locator("html").getAttribute("data-fastui-theme"),
     "light",
   );
   await screenshot("security-desktop-light");
-  await page.getByLabel("界面主题").selectOption("dark");
+  await setConsoleTheme("dark");
   assert.equal(
     await page.locator("html").getAttribute("data-fastui-theme"),
     "dark",
@@ -388,7 +394,7 @@ try {
     "dark",
     "theme preference did not persist",
   );
-  await page.getByLabel("界面主题").selectOption("light");
+  await setConsoleTheme("light");
 
   const unverified = await page.evaluate(() =>
     fetch("/api/v1/admin/applications", { credentials: "same-origin" }).then(
@@ -462,9 +468,9 @@ try {
   await editedRow.getByText("正常", { exact: true }).waitFor();
   await editedRow.scrollIntoViewIfNeeded();
   await page.screenshot({ path: "../.local/ui-verification/user-management-light.png" });
-  await page.getByLabel("界面主题").selectOption("dark");
+  await setConsoleTheme("dark");
   await page.screenshot({ path: "../.local/ui-verification/user-management-dark.png" });
-  await page.getByLabel("界面主题").selectOption("light");
+  await setConsoleTheme("light");
   await editedRow.getByRole("button", { name: "删除", exact: true }).click();
   await page.getByRole("dialog", { name: "确认操作" }).getByRole("button", { name: "取消", exact: true }).click();
   await editedRow.waitFor();
@@ -728,19 +734,38 @@ try {
   await page.getByRole("button", { name: "生成一次性凭证" }).click();
   await page.getByLabel("一次性凭证").waitFor();
   const priorCredential = await page.getByLabel("一次性凭证").inputValue();
-  await page.getByLabel("操作").selectOption("claim");
+  await page.getByLabel("操作").selectOption("reusable_invite");
+  await page.getByLabel("绑定已有 FastResearch 账号", { exact: true }).check();
+  await page.getByLabel("最大使用次数").fill("2");
+  await page.getByRole("button", { name: "生成通用邀请码" }).click();
+  const reusableField = page.getByLabel("通用邀请码", { exact: true });
+  await reusableField.waitFor();
+  const reusableCode = await reusableField.inputValue();
+  assert.ok(reusableCode.startsWith("frinv_"), "administrator did not receive a reusable invitation");
+  await page.getByLabel("操作").selectOption("claim_proof");
   await page.getByLabel("待认领账号的占位邮箱").fill("fr-browser@fastresearch.invalid");
   await page.getByLabel("认领后的登录邮箱").fill("claimed-research@example.test");
   await page.getByRole("button", { name: "生成一次性凭证" }).click();
   await page.getByLabel("一次性凭证").waitFor();
-  const claimCode = await page.getByLabel("一次性凭证").inputValue();
-  assert.notEqual(claimCode, priorCredential);
+  const accountProof = await page.getByLabel("一次性凭证").inputValue();
+  assert.notEqual(accountProof, priorCredential);
   const claimContext = await browser.newContext();
   try {
     const claimPage = await claimContext.newPage();
     await claimPage.goto(`${origin}/login?tab=register`);
+    const invitationInput = claimPage.getByLabel("邀请码", { exact: true });
+    await invitationInput.fill(reusableCode);
+    assert.equal(await invitationInput.inputValue(), reusableCode);
+    await claimPage.getByLabel("登录邮箱", { exact: true }).fill("shared-register@example.test", { timeout: 5000 });
+    await claimPage.getByLabel("姓名", { exact: true }).fill("Shared Invitation User");
+    await claimPage.getByLabel("新密码", { exact: true }).fill("shared-user-password-123");
+    await claimPage.getByLabel("确认新密码").fill("shared-user-password-123");
+    await claimPage.getByRole("button", { name: "创建 FastCAS 账号" }).click();
+    await claimPage.getByRole("status").getByText("账号已创建", { exact: false }).waitFor();
+    await claimPage.goto(`${origin}/login?tab=register`);
     await claimPage.getByRole("button", { name: "绑定已有账号", exact: true }).click();
-    await claimPage.getByLabel("邀请码", { exact: true }).fill(claimCode);
+    await claimPage.getByLabel("邀请码", { exact: true }).fill(reusableCode);
+    await claimPage.getByLabel("专属绑定凭证").fill(accountProof);
     await claimPage.getByLabel("原 FastResearch 账户姓名").fill("Legacy Research Account");
     await claimPage.getByLabel("新密码", { exact: true }).fill("research-owner-password-123");
     await claimPage.getByLabel("确认新密码").fill("research-owner-password-123");

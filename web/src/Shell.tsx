@@ -1,6 +1,5 @@
-import { useEffect, useState, type ReactNode } from "react";
-import { Button, Select, Badge } from "@fastrd/ui-react";
-import type { ColorMode } from "@fastrd/ui-foundation";
+import type { ReactNode } from "react";
+import { Button, Badge } from "@fastrd/ui-react";
 import {
   ShieldCheck,
   Link2,
@@ -16,14 +15,10 @@ import {
   ScrollText,
   Send,
   LogOut,
-  Sun,
-  Moon,
-  MonitorCog,
   type LucideIcon,
 } from "lucide-react";
 import { Icon } from "./Icon";
 
-const theme = window.fastCASColorMode;
 const groups: { label: string; items: [string, string, LucideIcon][] }[] = [
   {
     label: "个人账号",
@@ -74,8 +69,6 @@ export function Shell({
   onLogout: () => void;
   children: ReactNode;
 }) {
-  const [mode, setMode] = useState<ColorMode>(theme.mode);
-  useEffect(() => theme.subscribe((state) => setMode(state.mode)), []);
   const current =
     groups.flatMap((group) => group.items).find(([key]) => key === page)?.[1] ??
     "安全设置";
@@ -146,30 +139,14 @@ export function Shell({
             <strong>{user ? current : "欢迎使用 FastCAS"}</strong>
           </div>
           <div className="topbar-actions">
-            <div className="theme-control">
-              <Icon
-                icon={
-                  mode === "dark" ? Moon : mode === "light" ? Sun : MonitorCog
-                }
-              />
-              <Select
-                aria-label="界面主题"
-                size="sm"
-                value={mode}
-                onChange={(event) =>
-                  theme.setMode(event.target.value as ColorMode)
-                }
-              >
-                <option value="system">跟随系统</option>
-                <option value="light">浅色主题</option>
-                <option value="dark">深色主题</option>
-              </Select>
-            </div>
             {user && (
               <>
-                <span className="avatar" aria-hidden="true">
-                  {user.name.slice(0, 1).toUpperCase()}
-                </span>
+                <div className="account-summary">
+                  <span className="avatar" aria-hidden="true">
+                    {Array.from(user.name)[0]?.toUpperCase()}
+                  </span>
+                  <span>{user.name}</span>
+                </div>
                 <Button variant="quiet" disabled={busy} onClick={onLogout}>
                   <Icon icon={LogOut} />
                   退出

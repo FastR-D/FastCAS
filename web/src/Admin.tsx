@@ -27,7 +27,7 @@ import {
 } from "@fastrd/ui-react";
 import { useEffect, useState } from "react";
 type API = <T>(path: string, body?: unknown) => Promise<T>;
-type CredentialKind = "invite" | "claim" | "recovery" | "mfa_reset";
+type CredentialKind = "invite" | "claim" | "reusable_invite" | "claim_proof" | "recovery" | "mfa_reset";
 type ServiceAccount = {
   client: Application;
   active: boolean;
@@ -55,6 +55,10 @@ export function Admin({
     [email, setEmail] = useState(""),
     [targetEmail, setTargetEmail] = useState(""),
     [issued, setIssued] = useState("");
+  const [inviteRegister, setInviteRegister] = useState(true);
+  const [inviteClaim, setInviteClaim] = useState(false);
+  const [maxUses, setMaxUses] = useState("10");
+  const [expiryHours, setExpiryHours] = useState("24");
   const [editing, setEditing] = useState<ApplicationEdit | null>(null),
     [feedback, setFeedback] = useState("");
   const [secretFor, setSecretFor] = useState("");
@@ -100,22 +104,28 @@ export function Admin({
       if (page === "services") await loadServices();
     });
   }, [page]);
-  if (page === "credentials")
+  if (page === "credentials") {
+    const reusable = kind === "reusable_invite";
+    const accountSpecific = kind === "claim" || kind === "claim_proof";
     return (
       <section>
         <h2>邀请与恢复</h2>
         <p>
-          一次性凭证只显示一次。请通过可信渠道交给账号持有人。双重验证重置仍要求持有人输入当前
-          FastCAS 密码，成功后会退出其 FastCAS 会话。
+          凭证只显示一次。通用邀请码可供多个账号使用，注册与绑定共用使用次数。
         </p>
         <form
           onSubmit={(e) => {
             e.preventDefault();
             void run(async () => {
-              const result = await api<{ token: string }>(
-                "/admin/credentials",
-                kind === "claim" ? { kind, email, target_email: targetEmail } : { kind, email },
-              );
+              const input = reusable
+                ? {
+                    kind,
+                    operations: [...(inviteRegister ? ["register"] : []), ...(inviteClaim ? ["claim"] : [])],
+                    max_uses: Number(maxUses),
+                    expires_in_hours: Number(expiryHours),
+                  }
+                : { kind, email, ...(accountSpecific ? { target_email: targetEmail } : {}) };
+              const result = await api<{ token: string }>("/admin/credentials", input);
               setIssued(result.token);
             });
           }}
@@ -130,12 +140,35 @@ export function Admin({
               }}
             >
               <option value="invite">邀请注册</option>
+              <option value="reusable_invite">通用邀请码（可复用）</option>
               <option value="claim">绑定已有 FastResearch 账号</option>
+              <option value="claim_proof">专属绑定凭证（配合通用邀请码）</option>
               <option value="recovery">密码恢复</option>
               <option value="mfa_reset">双重验证重置</option>
             </Select>
           </label>
-          {kind === "claim" && (
+          {reusable && (
+            <fieldset>
+              <legend>允许的用途</legend>
+              <label>
+                <Checkbox checked={inviteRegister} onChange={(e) => setInviteRegister(e.target.checked)} />
+                注册 FastCAS 账号
+              </label>
+              <label>
+                <Checkbox checked={inviteClaim} onChange={(e) => setInviteClaim(e.target.checked)} />
+                绑定已有 FastResearch 账号
+              </label>
+              <label>
+                最大使用次数
+                <TextField type="number" min={1} max={10000} required value={maxUses} onChange={(e) => setMaxUses(e.target.value)} />
+              </label>
+              <label>
+                有效期（小时）
+                <TextField type="number" min={1} max={720} required value={expiryHours} onChange={(e) => setExpiryHours(e.target.value)} />
+              </label>
+            </fieldset>
+          )}
+          {accountSpecific && (
             <label>
               待认领账号的占位邮箱
               <TextField
@@ -147,28 +180,32 @@ export function Admin({
               <small>在用户管理中查找标为待认领的账户。</small>
             </label>
           )}
-          <label>
-            {kind === "claim" ? "认领后的登录邮箱" : "目标邮箱"}
-            <TextField
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
-          </label>
-          <Button type="submit" disabled={busy}>
+          {!reusable && (
+            <label>
+              {accountSpecific ? "认领后的登录邮箱" : "目标邮箱"}
+              <TextField
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+            </label>
+          )}
+          <Button type="submit" disabled={busy || (reusable && !inviteRegister && !inviteClaim)}>
             <Icon icon={KeyRound} />
-            生成一次性凭证
+            {reusable ? "生成通用邀请码" : "生成一次性凭证"}
           </Button>
         </form>
         {issued && (
           <div>
-            <p>{kind === "claim"
-              ? "请私下交付此邀请码及登录邮箱。用户需输入原 FastResearch 账户姓名，邀请码一小时内有效。"
-              : "请现在复制并私下交付，关闭后不再显示。"}</p>
+            <p>{reusable && inviteClaim
+              ? "请将邀请码发给受邀用户，并为每位需要绑定的旧账户持有人签发专属绑定凭证。"
+              : accountSpecific
+                ? "请私下交付凭证和登录邮箱。凭证一小时内有效。"
+                : "请现在复制并私下交付，关闭后不再显示。"}</p>
             <TextArea
               className="secret-value"
-              aria-label="一次性凭证"
+              aria-label={reusable ? "通用邀请码" : "一次性凭证"}
               readOnly
               value={issued}
             />
@@ -177,6 +214,7 @@ export function Admin({
         )}
       </section>
     );
+  }
   if (page === "services")
     return (
       <div className="grid">
