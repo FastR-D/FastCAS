@@ -2,8 +2,8 @@ name: Publish SDKs
 
 on:
   push:
-    # Server deployments must not publish language packages.
-    tags: ['v*', '!v*-deploy.*']
+    # SDK tags are stable X.Y.Z; application calendar tags never publish packages.
+    tags: ['v[0-9]+.[0-9]+.[0-9]+', '!v[0-9][0-9][0-9][0-9].*']
   workflow_dispatch:
     inputs:
       release_tag:
