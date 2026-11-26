@@ -1,3 +1,4 @@
+import { AccountMenu } from './AccountMenu';
 import type { ReactNode } from "react";
 import { Button, Badge } from "@fastrd/ui-react";
 import {
@@ -140,18 +141,12 @@ export function Shell({
           </div>
           <div className="topbar-actions">
             {user && (
-              <>
-                <div className="account-summary">
-                  <span className="avatar" aria-hidden="true">
-                    {Array.from(user.name)[0]?.toUpperCase()}
-                  </span>
-                  <span>{user.name}</span>
-                </div>
-                <Button variant="quiet" disabled={busy} onClick={onLogout}>
-                  <Icon icon={LogOut} />
-                  退出
-                </Button>
-              </>
+              <AccountMenu name={user.name} detail={user.email} actions={[
+                { label: '账号安全', onSelect: () => onSelect('security') },
+                { label: '认证关联', onSelect: () => onSelect('links') },
+                { label: '登录会话', onSelect: () => onSelect('sessions') },
+                { label: '退出登录', icon: <Icon icon={LogOut} />, danger: true, disabled: busy, onSelect: onLogout },
+              ]} />
             )}
           </div>
         </header>
